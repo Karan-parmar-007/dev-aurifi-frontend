@@ -1,0 +1,45 @@
+node_modules
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.production
+.svelte-kit
+src/**/*.test.*
+src/**/*.spec.*
+.vscode
+.idea
+coverage
+.nyc_output
+build
+dist
+.DS_Store
+Thumbs.db
+*.log
+logs/
+
+
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+/backend/.env
+/backend/.env.*
+/backend/!.env.example
+/backend/!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*

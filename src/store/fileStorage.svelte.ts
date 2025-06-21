@@ -1,0 +1,1 @@
+export const transferData = $state({ filename: null, columns: null })

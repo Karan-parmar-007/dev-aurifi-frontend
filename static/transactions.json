@@ -1,0 +1,42 @@
+[
+  {
+    "transaction_id": "TXN123",
+    "name": "Aman Gupta",
+    "loan_type": "Personal",
+    "amount": "₹23,00,000",
+    "asset_category": "Real Estate",
+    "asset_type": "Home",
+    "emi_amount": "₹23,200",
+    "status": "Open"
+  },
+  {
+    "transaction_id": "TXN123",
+    "name": "Aman Gupta",
+    "loan_type": "Personal",
+    "amount": "₹23,00,000",
+    "asset_category": "4 wheeler",
+    "asset_type": "SUV",
+    "emi_amount": "₹23,200",
+    "status": "Open"
+  },
+  {
+    "transaction_id": "TXN123",
+    "name": "Aman Gupta",
+    "loan_type": "Personal",
+    "amount": "₹23,00,000",
+    "asset_category": "Real Estate",
+    "asset_type": "Home",
+    "emi_amount": "₹23,200",
+    "status": "Open"
+  },
+  {
+    "transaction_id": "TXN123",
+    "name": "Aman Gupta",
+    "loan_type": "Personal",
+    "amount": "₹23,00,000",
+    "asset_category": "Real Estate",
+    "asset_type": "Office",
+    "emi_amount": "₹23,200",
+    "status": "Open"
+  }
+]
