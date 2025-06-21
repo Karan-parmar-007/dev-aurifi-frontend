@@ -2,7 +2,7 @@ name: Build and Deploy Frontend
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ master, main ]
 
 jobs:
   build-and-deploy:
@@ -39,8 +39,8 @@ jobs:
         context: .
         push: true
         tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/aurifi-frontend:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/aurifi-frontend:${{ github.sha }}
+          ${{ secrets.DOCKERHUB_USERNAME }}/dev-aurifi-frontend:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/dev-aurifi-frontend:${{ github.sha }}
 
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
@@ -53,7 +53,7 @@ jobs:
           cd /opt/aurifi
           
           echo "🔄 Pulling latest frontend image..."
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/aurifi-frontend:latest
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/dev-aurifi-frontend:latest
           
           echo "🔄 Updating frontend service..."
           docker compose up -d --no-deps frontend
@@ -70,4 +70,4 @@ jobs:
           echo "📊 Checking service status..."
           docker compose ps
           
-          echo "✅ Frontend deployed successfully!"
+          echo "✅ Frontend deployed successfully!"
