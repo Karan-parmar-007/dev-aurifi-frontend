@@ -492,7 +492,7 @@
 				<p class="mt-2 text-sm text-red-500">{errorMessage}</p>
 			{/if}
 			<div class="mt-4 flex w-full items-center justify-center gap-8">
-				<Button color="light" class="w-[30%]" onclick={previewPayload}>Preview Payload</Button>
+				<!-- <Button color="light" class="w-[30%]" onclick={previewPayload}>Preview Payload</Button> -->
 				<Button color="dark" class="w-[30%]" onclick={handleSubmit}>
 					{initialData ? 'Update Rule' : isNewVersion ? 'Apply to New Version' : 'Accept & Apply'}
 				</Button>

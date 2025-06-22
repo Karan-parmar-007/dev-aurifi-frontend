@@ -14,13 +14,9 @@
 	let urlParts = path.split('/');
 	let project_id = urlParts[3];
 	let currentFile = $state('');
-	// Declare props at top level
 	let { data } = $props();
-
-	// Initialize reactive state with data.result
 	let reactiveData = $state({ result: data.result });
 
-	// Log updates for debugging
 	$effect(() => {
 		console.log('Reactive data.result:', reactiveData.result);
 	});
@@ -31,14 +27,12 @@
 		}
 	});
 
-	// Store the selected parent_version_id for the modal
 	let selectedParentVersionId = $state('');
 
 	const fetchData = async () => {
 		try {
 			isloading = true;
 			errorMessage = null;
-			console.log('Fetching data for project:', project_id);
 			const response = await fetch(
 				`${VITE_API_URL}/transaction_dataset/fetch_all_rule_versions/${project_id}`
 			);
@@ -49,16 +43,13 @@
 				return { success: false, error: err };
 			}
 			const newData = await response.json();
-			// Validate data structure
 			if (!newData || !newData.grouped_versions) {
 				const err = 'Invalid data structure: grouped_versions missing';
 				console.error(err, newData);
 				errorMessage = err;
 				return { success: false, error: err };
 			}
-			// Update reactive state
 			reactiveData.result = newData;
-			console.log('from re fetch:', reactiveData.result);
 			return { success: true };
 		} catch (error) {
 			console.error('Exception in fetchFile:', error);
@@ -69,7 +60,6 @@
 		}
 	};
 
-	// Handle rule applied callback
 	function handleRuleApplied(_data: any) {
 		fetchData();
 	}
@@ -95,28 +85,20 @@
 		return ruleGroup.map((rule) => formatRule(rule)).join(' ');
 	}
 
-	// Download function
 	async function downloadFile(filePath: string, fileName: string) {
 		try {
 			isloading = true;
-
-			// Use query parameter instead of path parameter
 			const downloadUrl = `${VITE_API_URL}/project/download_file?file_path=${encodeURIComponent(filePath)}`;
-
 			const response = await fetch(downloadUrl, {
 				method: 'GET',
 				headers: {
 					Accept: 'application/octet-stream'
-					// Add any authentication headers if needed
-					// 'Authorization': `Bearer ${token}`
 				}
 			});
-
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}));
 				throw new Error(errorData.message || `Failed to download file: ${response.statusText}`);
 			}
-
 			const blob = await response.blob();
 			const url = window.URL.createObjectURL(blob);
 			const a = document.createElement('a');
@@ -125,17 +107,57 @@
 			a.style.display = 'none';
 			document.body.appendChild(a);
 			a.click();
-
-			// Clean up
 			document.body.removeChild(a);
 			window.URL.revokeObjectURL(url);
-
-			console.log(`Successfully downloaded: ${fileName || filePath}`);
 		} catch (error) {
 			console.error('Download error:', error);
 			alert(
 				`Failed to download the file: ${error instanceof Error ? error.message : 'Unknown error'}`
 			);
+		} finally {
+			isloading = false;
+		}
+	}
+
+	// New delete function
+	async function deleteRuleVersion(version: any, isRootVersion: boolean) {
+		try {
+			isloading = true;
+			errorMessage = null;
+
+			const apiUrl = isRootVersion
+				? `${VITE_API_URL}/transaction_dataset/delete_rule_version`
+				: `${VITE_API_URL}/transaction_dataset/delete_sub_version`;
+
+			const body = isRootVersion
+				? {
+						transaction_id: project_id,
+						version_id: version.version_id
+				  }
+				: {
+						transaction_id: project_id,
+						version_id: version.version_id,
+						delete_children: false
+				  };
+
+			const response = await fetch(apiUrl, {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(body)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.message || `Failed to delete rule version: ${response.statusText}`);
+			}
+
+			// Refresh data after successful deletion
+			await fetchData();
+		} catch (error) {
+			console.error('Delete error:', error);
+			errorMessage = `Failed to delete rule version: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		} finally {
 			isloading = false;
 		}
@@ -252,9 +274,7 @@
 										<button
 											aria-label="delete button"
 											class="cursor-pointer"
-											onclick={() => {
-												console.log('delete this rule');
-											}}
+											onclick={() => deleteRuleVersion(version, versionIndex === 0)}
 										>
 											<svg
 												width="14"
