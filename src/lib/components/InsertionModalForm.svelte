@@ -1,24 +1,21 @@
 <script lang="ts">
-	import { Modal, Input, Button, Label, Checkbox } from 'flowbite-svelte';
+	import { Modal, Input, Button, Label, Checkbox, Select } from 'flowbite-svelte';
 	import { InsertionModal } from '../../store/toogleModal.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
-	import { VITE_API_URL } from '$lib/constants';
-	import { user_id } from '$lib/constants';
-
-	$effect(() => {
-		$inspect(savingRules);
-	});
+	import { VITE_API_URL, user_id } from '$lib/constants';
 
 	// Receive the function from parent as a prop and initial data for editing
 	let {
 		processRules,
 		initialData = null,
-		tagName = null
+		tagName = null,
+		cleanup
 	}: {
 		processRules: (rules: any[], type: string) => { success: boolean; message: string };
 		initialData?: any[] | null;
 		tagName?: string | null;
+		cleanup: () => Promise<void>;
 	} = $props();
 
 	// Define Rule type
@@ -30,16 +27,17 @@
 		then: string;
 	};
 
+	// Default empty rule
+	const defaultRule: Rule = {
+		column: '',
+		operator: 'includes',
+		value: '',
+		connector: 'THEN',
+		then: 'reject'
+	};
+
 	// Reactive state with default rules
-	let rules = $state<Rule[]>([
-		{
-			column: '',
-			operator: 'includes',
-			value: '',
-			connector: 'THEN',
-			then: 'accept'
-		}
-	]);
+	let rules = $state<Rule[]>([{ ...defaultRule }]);
 
 	let pageUrl = page.url.pathname;
 	let urlParts = pageUrl.split('/');
@@ -54,16 +52,63 @@
 	let ruleName = $state<string>('');
 	let pinRule = $state<boolean>(false);
 	let errorMessage = $state<string>('');
+	let savedRules = $state<any[]>([]);
+	let selectedRuleId = $state<string>('');
+
+	// Reset form state when modal opens for new rule or closes
+	onDestroy(() => {
+		console.log('Modal component destroyed, resetting form');
+		// rules = [{ ...defaultRule }];
+		console.log('calling cleanup');
+		cleanup();
+	});
 
 	// If initialData is provided, use it for editing
 	$effect(() => {
+		console.log('this effect was called');
 		if (initialData) {
-			rules = initialData;
+			console.log('initial data found: ', initialData);
+			rules = initialData.map((rule) => ({ ...rule }));
+			const matchingRule = savedRules.find(
+				(rule) => JSON.stringify(rule.rules.flat()) === JSON.stringify(initialData)
+			);
+			if (matchingRule) {
+				selectedRuleId = matchingRule._id;
+				ruleName = matchingRule.rule_name;
+				pinRule = matchingRule.pin;
+				tagName = matchingRule.tag_name;
+			} else {
+				selectedRuleId = '';
+				ruleName = '';
+				pinRule = false;
+			}
 		}
 	});
 
+	// Update form when a rule is selected from dropdown
 	$effect(() => {
-		$inspect(savingRules);
+		if (selectedRuleId) {
+			const selectedRule = savedRules.find((rule) => rule._id === selectedRuleId);
+			if (selectedRule) {
+				rules = selectedRule.rules.flat(); // Flatten the nested rules array
+				ruleName = selectedRule.rule_name;
+				pinRule = selectedRule.pin;
+				tagName = selectedRule.tag_name;
+			}
+		} else {
+			// Reset form when no rule is selected
+			rules = [
+				{
+					column: '',
+					operator: 'includes',
+					value: '',
+					connector: 'THEN',
+					then: 'accept'
+				}
+			];
+			ruleName = '';
+			pinRule = false;
+		}
 	});
 
 	function addRule(index: number, connector: 'THEN' | 'AND' | 'OR') {
@@ -216,7 +261,7 @@
 
 		// Prepare payload
 		const payload = {
-			user_id: user_id, // Hardcoded for now
+			user_id: user_id,
 			rule_name: ruleName.trim(),
 			rules: formattedRules,
 			pin: pinRule,
@@ -306,20 +351,41 @@
 		}
 	};
 
+	const fetchSavedRules = async () => {
+		try {
+			isLoading = true;
+			const response = await fetch(`${VITE_API_URL}/rules_book_debt/get_all_rules/${user_id}`);
+
+			if (!response.ok) {
+				console.log('Response not OK: ', response.status, response.statusText);
+				savedRules = [];
+				console.log(response);
+			}
+
+			const result = await response.json();
+			if (result.status !== 'success') {
+				console.error('API Error: ', result.details);
+				savedRules = [];
+				isLoading = false;
+				return;
+			}
+			savedRules = result.rules;
+			console.log(savedRules);
+			isLoading = false;
+		} catch (error) {
+			console.error('error: ', error);
+			isLoading = false;
+		}
+	};
+
 	onMount(() => {
 		fetchColumns();
 		fetchDatatypeMapping();
+		fetchSavedRules();
 	});
 </script>
 
-<Modal
-	title={savingRules
-		? 'Save Rule'
-		: initialData
-			? `Edit Insertion Rule for ${tagName}`
-			: `New Insertion Rule for ${tagName}`}
-	bind:open={InsertionModal.isInsertionModalOpen}
->
+<Modal bind:open={InsertionModal.isInsertionModalOpen}>
 	{#if savingRules}
 		<div class="flex flex-col gap-4">
 			{#if errorMessage}
@@ -358,8 +424,21 @@
 		</div>
 	{:else}
 		<div class="modal-header">
-			<h2>{initialData ? 'Edit' : 'New'} Insertion Rule</h2>
-			<span class="rule-number">Rule 1</span>
+			<h2>
+				{initialData ? 'Edit' : 'New'}
+				{savingRules
+					? 'Save Rule'
+					: initialData
+						? ` Insertion Rule for ${tagName}`
+						: ` Insertion Rule for ${tagName}`}
+			</h2>
+			<span class="w-[40%]">
+				<Select bind:value={selectedRuleId} placeholder="Select a saved rule">
+					{#each savedRules as rule}
+						<option value={rule._id}>{rule.rule_name}</option>
+					{/each}
+				</Select>
+			</span>
 		</div>
 		{#if isLoading}
 			<div class="loading-container">
@@ -474,6 +553,7 @@
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 16px;
+		padding-right: 5%;
 	}
 
 	.rule-number {

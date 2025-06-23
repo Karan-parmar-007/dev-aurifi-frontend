@@ -1,23 +1,21 @@
 <script lang="ts">
-	import { Modal, Input, Button, Label, Checkbox } from 'flowbite-svelte';
+	import { Modal, Input, Button, Label, Checkbox, Select } from 'flowbite-svelte';
 	import { EjectionModal } from '../../store/toogleModal.svelte';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { VITE_API_URL } from '$lib/constants';
-	import { user_id } from '$lib/constants';
-	$effect(() => {
-		$inspect(savingRules);
-	});
+	import { VITE_API_URL, user_id } from '$lib/constants';
 
-	// Receive the function from parent as a prop and initial data for editing
+	// Receive props from parent
 	let {
 		processRules,
 		initialData = null,
-		tagName = null
+		tagName = null,
+		cleanup
 	}: {
 		processRules: (rules: any[], type: string) => { success: boolean; message: string };
 		initialData?: any[] | null;
 		tagName?: string | null;
+		cleanup: () => Promise<void>;
 	} = $props();
 
 	// Define Rule type
@@ -29,22 +27,23 @@
 		then: string;
 	};
 
-	// Reactive state with default rules
-	let rules = $state<Rule[]>([
-		{
-			column: '',
-			operator: 'includes',
-			value: '',
-			connector: 'THEN',
-			then: 'reject'
-		}
-	]);
+	// Default empty rule
+	const defaultRule: Rule = {
+		column: '',
+		operator: 'includes',
+		value: '',
+		connector: 'THEN',
+		then: 'reject'
+	};
 
-	let pageUrl = page.url.pathname;
+	// Reactive states
+	let rules = $state<Rule[]>([{ ...defaultRule }]);
+
+	let pageUrl = $state(page.url.pathname);
 	let urlParts = pageUrl.split('/');
 	let projectId = urlParts[3];
 
-	const operators = ['includes', 'less than', 'greater than', 'equal to'];
+	const operators = ['includes', 'equal to', 'greater than', 'less than'];
 
 	let isLoading = $state(false);
 	let columns = $state<string[]>([]);
@@ -53,28 +52,54 @@
 	let ruleName = $state<string>('');
 	let pinRule = $state<boolean>(false);
 	let errorMessage = $state<string>('');
+	let savedRules = $state<any[]>([]);
+	let selectedRuleId = $state<string>('');
 
-	// If initialData is provided, use it for editing
+	// Reset form state when modal opens for new rule or closes
+	onDestroy(() => {
+		console.log('Modal component destroyed, resetting form');
+		// rules = [{ ...defaultRule }];
+		console.log('calling cleanup');
+		cleanup();
+	});
+
+	// Handle initialData for edit mode
 	$effect(() => {
+		console.log('this effect was called');
 		if (initialData) {
-			rules = initialData;
+			console.log('initial data found: ', initialData);
+			rules = initialData.map((rule) => ({ ...rule }));
+			const matchingRule = savedRules.find(
+				(rule) => JSON.stringify(rule.rules.flat()) === JSON.stringify(initialData)
+			);
+			if (matchingRule) {
+				selectedRuleId = matchingRule._id;
+				ruleName = matchingRule.rule_name;
+				pinRule = matchingRule.pin;
+				tagName = matchingRule.tag_name;
+			} else {
+				selectedRuleId = '';
+				ruleName = '';
+				pinRule = false;
+			}
 		}
 	});
 
+	// Update form when a saved rule is selected (only if not in edit mode)
 	$effect(() => {
-		$inspect(savingRules);
+		if (selectedRuleId && !initialData) {
+			const selectedRule = savedRules.find((rule) => rule._id === selectedRuleId);
+			if (selectedRule) {
+				rules = selectedRule.rules.flat().map((rule: Rule) => ({ ...rule }));
+				ruleName = selectedRule.rule_name;
+				pinRule = selectedRule.pin;
+				tagName = selectedRule.tag_name;
+			}
+		}
 	});
 
 	function addRule(index: number, connector: 'THEN' | 'AND' | 'OR') {
-		rules.splice(index + 1, 0, {
-			column: '',
-			operator: 'includes',
-			value: '',
-			connector: 'THEN',
-			then: ''
-		});
-
-		// Update the connector of the previous rule
+		rules.splice(index + 1, 0, { ...defaultRule, connector: 'THEN', then: '' });
 		rules[index].connector = connector;
 	}
 
@@ -85,33 +110,24 @@
 		}
 		if (rules.length > 1) {
 			rules.splice(index, 1);
-
-			// If we removed any but the last rule, ensure connectors stay consistent
-			if (index < rules.length) {
-				if (index > 0) {
-					rules[index - 1].connector = rules[index].connector;
-				}
+			if (index < rules.length && index > 0) {
+				rules[index - 1].connector = rules[index]?.connector || 'THEN';
 			}
 		}
 	}
 
 	function handleConnectorChange(index: number, newConnector: 'THEN' | 'AND' | 'OR' | '') {
 		if (newConnector && newConnector !== 'THEN') {
-			// Add a new rule when AND/OR is selected
 			addRule(index, newConnector as 'AND' | 'OR');
 		} else if (!newConnector && rules.length > 1) {
-			// Remove the next rule when connector is removed
 			removeRule(index + 1);
 		} else if (newConnector) {
-			// Just update the connector
 			rules[index].connector = newConnector;
 		}
 	}
 
-	// Separate update functions to prevent cross-field resets
 	function updateColumn(index: number, value: string) {
 		rules[index].column = value;
-		// Reset value when column changes
 		rules[index].value = '';
 	}
 
@@ -127,15 +143,10 @@
 		rules[index].then = value;
 	}
 
-	// Get input type based on column's datatype
 	function getInputType(columnName: string): string {
-		if (!columnName || !datatypeMapping[columnName]) {
-			return 'text';
-		}
-
-		const datatype = datatypeMapping[columnName];
-
-		switch (datatype.toLowerCase()) {
+		if (!columnName || !datatypeMapping[columnName]) return 'text';
+		const datatype = datatypeMapping[columnName].toLowerCase();
+		switch (datatype) {
 			case 'number':
 			case 'integer':
 			case 'float':
@@ -152,20 +163,14 @@
 		}
 	}
 
-	// Get appropriate operators based on column's datatype
 	function getOperatorsForColumn(columnName: string): string[] {
-		if (!columnName || !datatypeMapping[columnName]) {
-			return operators;
-		}
-
-		const datatype = datatypeMapping[columnName];
-
-		switch (datatype.toLowerCase()) {
+		if (!columnName || !datatypeMapping[columnName]) return operators;
+		const datatype = datatypeMapping[columnName].toLowerCase();
+		switch (datatype) {
 			case 'number':
 			case 'integer':
 			case 'float':
 			case 'double':
-				return ['equal to', 'less than', 'greater than'];
 			case 'date':
 			case 'datetime':
 				return ['equal to', 'less than', 'greater than'];
@@ -176,53 +181,40 @@
 		}
 	}
 
-	// Submit handler for immediate application
-	function handleSubmit() {
-		// Validate rules
-		const validRules = rules.filter((rule) => rule.column && rule.value !== '');
-
-		if (validRules.length > 0) {
-			// Call the parent's function and get the result
-			const result = processRules(validRules, 'ejection');
-
-			if (result && result.success) {
-				console.log(result.message);
-				EjectionModal.isEjectionModalOpen = false;
-			}
-		} else {
-			// Handle validation error
-			alert('Please fill in all rule fields');
-		}
-	}
-
-	// Save rule handler
-	async function handleSaveRule() {
-		// Validate rules
+	async function handleSubmit() {
 		const validRules = rules.filter((rule) => rule.column && rule.value !== '');
 		if (validRules.length === 0) {
 			errorMessage = 'Please fill in all rule fields';
 			return;
 		}
+		const result = processRules(validRules, 'ejection');
+		if (result && result.success) {
+			console.log(result.message);
+			EjectionModal.isEjectionModalOpen = false;
+		} else {
+			errorMessage = 'Failed to apply rules';
+		}
+	}
 
-		// Validate rule name
+	async function handleSaveRule() {
+		const validRules = rules.filter((rule) => rule.column && rule.value !== '');
+		if (validRules.length === 0) {
+			errorMessage = 'Please fill in all rule fields';
+			return;
+		}
 		if (!ruleName.trim()) {
 			errorMessage = 'Rule name is required';
 			return;
 		}
-
-		// Format rules as array of arrays
 		const formattedRules = validRules.map((rule) => [rule]);
-
-		// Prepare payload
 		const payload = {
-			user_id: user_id, // Hardcoded for now
+			user_id,
 			rule_name: ruleName.trim(),
 			rules: formattedRules,
 			pin: pinRule,
 			tag_name: tagName,
 			type_of_rule: 'ejection'
 		};
-
 		try {
 			isLoading = true;
 			const response = await fetch(`${VITE_API_URL}/rules_book_debt/add_rule?update=true`, {
@@ -232,16 +224,12 @@
 				},
 				body: JSON.stringify(payload)
 			});
-
 			const data = await response.json();
-
 			if (!response.ok) {
 				throw new Error(data.message || 'Failed to save rule');
 			}
-
 			if (data.status === 'success') {
 				console.log(data.message, 'Rule ID:', data.rule_id);
-				// Apply rules immediately via parent
 				const result = processRules(validRules, 'ejection');
 				if (result && result.success) {
 					console.log(result.message);
@@ -262,39 +250,29 @@
 		}
 	}
 
-	const fetchColumns = async () => {
+	async function fetchColumns() {
 		try {
 			isLoading = true;
 			const response = await fetch(
 				`${VITE_API_URL}/dataset/get_column_names?project_id=${projectId}`
 			);
-
-			if (!response.ok) {
-				throw new Error('Failed to fetch column data');
-			}
-
+			if (!response.ok) throw new Error('Failed to fetch column data');
 			const data = await response.json();
-			console.log('column_data: ', data);
 			columns = data.column_names || [];
 		} catch (error) {
 			console.error('Error fetching column data:', error);
+			columns = [];
 		} finally {
 			isLoading = false;
 		}
-	};
+	}
 
-	const fetchDatatypeMapping = async () => {
+	async function fetchDatatypeMapping() {
 		try {
 			isLoading = true;
 			const response = await fetch(`${VITE_API_URL}/project/get_datatype_mapping/${projectId}`);
-
-			if (!response.ok) {
-				throw new Error('Failed to fetch datatype mapping');
-			}
-
+			if (!response.ok) throw new Error('Failed to fetch datatype mapping');
 			const data = await response.json();
-			console.log('datatype: ', data);
-
 			if (data.status === 'success' && data.datatype_mapping) {
 				datatypeMapping = data.datatype_mapping;
 			}
@@ -303,11 +281,31 @@
 		} finally {
 			isLoading = false;
 		}
-	};
+	}
+
+	async function fetchSavedRules() {
+		try {
+			isLoading = true;
+			const response = await fetch(`${VITE_API_URL}/rules_book_debt/get_all_rules/${user_id}`);
+			const result = await response.json();
+			if (!response.ok || result.status !== 'success') {
+				console.error('API Error:', result.details || response.statusText);
+				savedRules = [];
+				return;
+			}
+			savedRules = result.rules || [];
+		} catch (error) {
+			console.error('Error fetching saved rules:', error);
+			savedRules = [];
+		} finally {
+			isLoading = false;
+		}
+	}
 
 	onMount(() => {
 		fetchColumns();
 		fetchDatatypeMapping();
+		fetchSavedRules();
 	});
 </script>
 
@@ -315,8 +313,8 @@
 	title={savingRules
 		? 'Save Rule'
 		: initialData
-			? `Edit Ejection Rule for ${tagName}`
-			: `New Ejection Rule for ${tagName}`}
+			? `Edit Ejection Rule for ${tagName || 'Tag'}`
+			: `New Ejection Rule for ${tagName || 'Tag'}`}
 	bind:open={EjectionModal.isEjectionModalOpen}
 >
 	{#if savingRules}
@@ -358,7 +356,14 @@
 	{:else}
 		<div class="modal-header">
 			<h2>{initialData ? 'Edit' : 'New'} Ejection Rule</h2>
-			<span class="rule-number">Rule 1</span>
+			<span class="w-[40%]">
+				<Select bind:value={selectedRuleId} placeholder="Select a saved rule">
+					<option value="">Select a saved rule</option>
+					{#each savedRules as rule}
+						<option value={rule._id}>{rule.rule_name}</option>
+					{/each}
+				</Select>
+			</span>
 		</div>
 		{#if isLoading}
 			<div class="loading-container">
@@ -369,11 +374,11 @@
 			{#each rules as rule, i}
 				<div class="relative flex flex-1 flex-col gap-4">
 					<div class="flex w-full flex-1 items-center gap-2">
-						<div class="">IF</div>
+						<div>IF</div>
 						<div class="w-full">
 							<select
-								value={rule.column}
-								onchange={(e) => updateColumn(i, e.target.value)}
+								bind:value={rule.column}
+								onchange={(e) => updateColumn(i, e.currentTarget.value)}
 								class="w-full rounded border border-gray-300 p-2"
 							>
 								<option value="" disabled>Select Column</option>
@@ -385,52 +390,46 @@
 					</div>
 					<div class="flex gap-2">
 						<select
+							bind:value={rule.operator}
+							onchange={(e) => updateOperator(i, e.currentTarget.value)}
 							class="flex-[1] rounded border border-gray-300 p-2"
-							value={rule.operator}
-							onchange={(e) => updateOperator(i, e.target.value)}
 						>
 							{#each getOperatorsForColumn(rule.column) as op}
 								<option value={op}>{op}</option>
 							{/each}
 						</select>
-
 						<input
 							class="flex-[2] rounded border border-gray-300 p-2"
 							type={getInputType(rule.column)}
-							value={rule.value}
-							oninput={(e) => updateValue(i, e.target.value)}
+							bind:value={rule.value}
+							oninput={(e) => updateValue(i, e.currentTarget.value)}
 							placeholder={rule.column ? `Enter ${rule.column} value` : 'Enter value'}
 						/>
 					</div>
-
 					{#if i < rules.length - 1}
-						<div class="connector">
-							{rule.connector}
-						</div>
+						<div class="connector">{rule.connector}</div>
 					{:else}
 						<div class="flex gap-2">
 							<select
-								class="flex-[1] rounded border border-gray-300 p-2"
-								value={rule.connector}
+								bind:value={rule.connector}
 								onchange={(e) =>
-									handleConnectorChange(i, e.target.value as 'THEN' | 'AND' | 'OR' | '')}
+									handleConnectorChange(i, e.currentTarget.value as 'THEN' | 'AND' | 'OR' | '')}
+								class="flex-[1] rounded border border-gray-300 p-2"
 							>
 								<option value="THEN">THEN</option>
 								<option value="AND">AND</option>
 								<option value="OR">OR</option>
 							</select>
-
 							<select
+								bind:value={rule.then}
+								onchange={(e) => updateThen(i, e.currentTarget.value)}
 								class="flex-[2] rounded border border-gray-300 p-2"
-								value={rule.then}
-								onchange={(e) => updateThen(i, e.target.value)}
 							>
 								<option value="reject">Reject</option>
 								<option value="accept">Accept</option>
 							</select>
 						</div>
 					{/if}
-
 					{#if rules.length > 1}
 						<button
 							type="button"
@@ -438,16 +437,14 @@
 							onclick={(e) => removeRule(i, e)}
 							aria-label="Remove rule"
 						>
-							×</button
-						>
+							×
+						</button>
 					{/if}
 				</div>
 			{/each}
-
 			{#if errorMessage}
 				<p class="mt-2 text-sm text-red-500">{errorMessage}</p>
 			{/if}
-
 			<div class="mt-4 flex w-full items-center justify-center gap-8">
 				<Button
 					color="dark"
@@ -473,12 +470,8 @@
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 16px;
+		padding-right: 5%;
 	}
-
-	.rule-number {
-		color: #555;
-	}
-
 	.remove-rule {
 		position: absolute;
 		top: -20%;
@@ -490,13 +483,11 @@
 		cursor: pointer;
 		padding: 0 5px;
 	}
-
 	.connector {
 		font-weight: bold;
 		padding: 8px;
 		text-align: center;
 	}
-
 	.loading-container {
 		display: flex;
 		flex-direction: column;
@@ -504,7 +495,6 @@
 		justify-content: center;
 		padding: 20px;
 	}
-
 	.loading-spinner {
 		border: 4px solid #f3f3f3;
 		border-top: 4px solid #1d2634;
@@ -514,7 +504,6 @@
 		animation: spin 1s linear infinite;
 		margin-bottom: 10px;
 	}
-
 	@keyframes spin {
 		0% {
 			transform: rotate(0deg);

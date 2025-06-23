@@ -50,6 +50,10 @@
 	let rules_applied_success = $state(false);
 	let currentFile = $state('');
 
+	const cleanup = async () => {
+		editingRuleData = null;
+	};
+
 	const fetchData = async () => {
 		try {
 			isloading = true;
@@ -479,6 +483,7 @@
 			<InsertionModalForm
 				processRules={(rules) => processRules(rules, 'insertion')}
 				initialData={editingRuleData}
+				{cleanup}
 				tagName={selectedTag}
 			/>
 		{/if}
@@ -486,6 +491,7 @@
 			<EjectionModalForm
 				processRules={(rules) => processRules(rules, 'ejection')}
 				initialData={editingRuleData}
+				{cleanup}
 				tagName={selectedTag}
 			/>
 		{/if}
@@ -532,13 +538,13 @@
 									<Button
 										onclick={() => openInsertionModal(tagInfo.tag_name)}
 										style="padding: 6px"
-										class="w-1/2 cursor-pointer border border-[#08FF00] bg-[#e9ffef] text-xs text-black focus:ring-0 focus:outline-none"
+										class="w-1/2 cursor-pointer border border-[#08FF00] bg-[#e9ffef] text-xs text-black focus:outline-none focus:ring-0"
 										>+ Insertion Rule</Button
 									>
 									<Button
 										onclick={() => openEjectionModal(tagInfo.tag_name)}
 										style="padding: 6px"
-										class="w-1/2 cursor-pointer border border-[#FF0000] bg-[#ffeded] text-xs text-black focus:ring-0 focus:outline-none"
+										class="w-1/2 cursor-pointer border border-[#FF0000] bg-[#ffeded] text-xs text-black focus:outline-none focus:ring-0"
 										>- Ejection Rule</Button
 									>
 								{/if}
@@ -551,7 +557,7 @@
 												<!-- svelte-ignore a11y_no_static_element_interactions -->
 												<div
 													style="padding: 6px"
-													class="rule-item flex w-full cursor-move items-center justify-between rounded-md text-xs focus:ring-0 focus:outline-none"
+													class="rule-item flex w-full cursor-move items-center justify-between rounded-md text-xs focus:outline-none focus:ring-0"
 													class:pinned-rule={pinnedRuleIds[tagInfo.tag_name]?.insertion.includes(
 														index
 													)}
@@ -640,7 +646,7 @@
 												<!-- svelte-ignore a11y_no_static_element_interactions -->
 												<div
 													style="padding: 6px"
-													class="rule-item flex w-full cursor-move items-center justify-between rounded-md text-xs focus:ring-0 focus:outline-none"
+													class="rule-item flex w-full cursor-move items-center justify-between rounded-md text-xs focus:outline-none focus:ring-0"
 													class:pinned-rule={pinnedRuleIds[tagInfo.tag_name]?.ejection.includes(
 														index
 													)}
