@@ -13,6 +13,7 @@
 	import ImportTransaction from '$lib/components/ImportTransaction.svelte';
 	import { user_id, VITE_API_URL } from '$lib/constants';
 	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 	console.log('data: ', data);
@@ -188,6 +189,42 @@
 			isloading = false;
 		}
 	};
+
+	const navigateToNextStep = async (projectId: string, fileName: string) => {
+		try {
+			const response = await fetch(
+				`${VITE_API_URL}/transaction/get_transaction_navigation/${projectId}`
+			);
+			if (!response.ok) {
+				throw new Error('Failed to fetch project navigation');
+			}
+			const result = await response.json();
+			if (result.status === 'success' && result.navigation) {
+				const nextStep = result.navigation.route;
+				setCurrentFile(fileName);
+				console.log(nextStep);
+
+				const stepToRouteMap = {
+					'/transaction/upload-dataset': '/Transactions/file_overview',
+					'/transaction/column-mapping': '/Transactions/column_mapping',
+					'/transaction/datatype-conversion': '/Transactions/data_validation',
+					'/transaction/add-fields': '/Transactions/add_fields',
+					'/transaction/rbi-rules': '/Transactions/rbi_guidelines',
+					'/transaction/rule-versions': '/Transactions/sanitised_data'
+				};
+
+				const route =
+					`${stepToRouteMap[nextStep]}/${projectId}` || `/Transactions/file_overview/${projectId}`;
+
+				// console.log(route);
+				goto(route);
+			}
+		} catch (error) {
+			console.error('Error fetching navigation:', error);
+			// Fallback to original behavior
+			goto(`/Transactions/file_overview/${projectId}`);
+		}
+	};
 </script>
 
 {#if transactionModal.isTransactionModalOpen}
@@ -259,12 +296,11 @@
 								<TableBodyCell>{item.totalValue}</TableBodyCell>
 								<TableBodyCell>{item.updated_at}</TableBodyCell>
 								<TableBodyCell>
-									<a
-										onclick={() => {
-											setCurrentFile(item.name);
-										}}
-										href={`/Transactions/file_overview/${item._id}`}
-										class="text-primaryBlue-100 flex justify-end font-medium">Continue Session</a
+									<button
+										aria-label="continue session button"
+										onclick={() => navigateToNextStep(item._id, item.name)}
+										class="text-primaryBlue-100 flex cursor-pointer justify-end font-medium"
+										>Continue Session</button
 									>
 								</TableBodyCell>
 								<TableBodyCell>

@@ -285,10 +285,7 @@
 								>
 									Cancel
 								</button>
-								<button
-									onclick={moveToArchive}
-									class="rounded-lg bg-blue-600 px-4 py-2 text-white"
-								>
+								<button onclick={moveToArchive} class="rounded-lg bg-blue-600 px-4 py-2 text-white">
 									Archive
 								</button>
 							</div>
@@ -353,9 +350,11 @@
 								<TableBodyCell>{`Created on: ${formatDate(items.updated_at)}`}</TableBodyCell>
 								<TableBodyCell colspan={1}></TableBodyCell>
 								<TableBodyCell
-									>{#if !items.is_processing_done}<button
-											onclick={() => navigateToNextStep(items._id, items.name)}
-											class=" flex justify-end font-medium text-blue-600">Process file ></button
+									>{#if !items.is_processing_done}
+										<span class=" flex justify-end font-medium text-blue-600"
+											><button onclick={() => navigateToNextStep(items._id, items.name)}
+												>Process file ></button
+											></span
 										>
 									{:else}<span class=" flex justify-end font-medium text-blue-600">Processed</span>
 									{/if}</TableBodyCell
