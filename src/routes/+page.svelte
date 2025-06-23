@@ -17,6 +17,7 @@
 	} from 'flowbite-svelte';
 	import { browser } from '$app/environment';
 	import { user_id, VITE_API_URL } from '$lib/constants';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 	let files = $derived(data.files);
@@ -73,16 +74,13 @@
 
 	const downloadFile = async (file_path: string) => {
 		try {
-			// Use query parameter instead of path parameter
 			const downloadUrl = `${VITE_API_URL}/project/download_file?file_path=${encodeURIComponent(file_path)}`;
 			console.log('Download URL:', downloadUrl);
 
-			// Fetch the file with proper headers
 			const response = await fetch(downloadUrl, {
 				method: 'GET',
 				headers: {
 					// Add any authentication headers if needed
-					// 'Authorization': `Bearer ${token}`
 				}
 			});
 
@@ -90,31 +88,20 @@
 				throw new Error(`Download failed: ${response.statusText}`);
 			}
 
-			// Create blob from response
 			const blob = await response.blob();
-
-			// Create temporary URL for the blob
 			const blobUrl = window.URL.createObjectURL(blob);
-
-			// Extract filename from path or use default
 			const filename = file_path.split('/').pop() || 'download.xlsx';
-
-			// Create temporary anchor element and trigger download
 			const a = document.createElement('a');
 			a.href = blobUrl;
 			a.download = filename;
 			a.style.display = 'none';
 			document.body.appendChild(a);
 			a.click();
-
-			// Cleanup
 			document.body.removeChild(a);
 			window.URL.revokeObjectURL(blobUrl);
-
 			console.log('Download completed successfully');
 		} catch (error) {
 			console.error('Error downloading file:', error);
-			// You might want to show a toast/notification to the user here
 			alert('Failed to download file. Please try again.');
 		}
 	};
@@ -225,7 +212,36 @@
 		}
 	};
 
-	// Format file data keys for display in dropdown
+	const navigateToNextStep = async (projectId: string, fileName: string) => {
+		try {
+			const response = await fetch(`${VITE_API_URL}/project/get_project_navigation/${projectId}`);
+			if (!response.ok) {
+				throw new Error('Failed to fetch project navigation');
+			}
+			const result = await response.json();
+			if (result.status === 'success' && result.navigation) {
+				const nextStep = result.navigation.next_step;
+				setCurrentFile(fileName);
+
+				const stepToRouteMap = {
+					header_mapping: '/DebtSheet/column_mapping',
+					datatype_conversion: '/DebtSheet/data_validation',
+					select_tags: '/DebtSheet/Tagging',
+					apply_rules: '/DebtSheet/rule_setup',
+					completed: '/DebtSheet/file_overview'
+				};
+
+				const route =
+					`${stepToRouteMap[nextStep]}/${projectId}` || `/DebtSheet/file_overview/${projectId}`;
+				goto(route);
+			}
+		} catch (error) {
+			console.error('Error fetching navigation:', error);
+			// Fallback to original behavior
+			goto(`/DebtSheet/file_overview/${projectId}`);
+		}
+	};
+
 	const formatFileKey = (key: string) => {
 		if (key === 'combined_file') return 'Combined File';
 		return key
@@ -271,7 +287,7 @@
 								</button>
 								<button
 									onclick={moveToArchive}
-									class="rounded rounded-lg bg-blue-600 px-4 py-2 text-white"
+									class="rounded-lg bg-blue-600 px-4 py-2 text-white"
 								>
 									Archive
 								</button>
@@ -337,10 +353,9 @@
 								<TableBodyCell>{`Created on: ${formatDate(items.updated_at)}`}</TableBodyCell>
 								<TableBodyCell colspan={1}></TableBodyCell>
 								<TableBodyCell
-									>{#if !items.is_processing_done}<a
-											href={`/DebtSheet/file_overview/${items._id}`}
-											onclick={() => setCurrentFile(items.name)}
-											class=" flex justify-end font-medium text-blue-600">Process file ></a
+									>{#if !items.is_processing_done}<button
+											onclick={() => navigateToNextStep(items._id, items.name)}
+											class=" flex justify-end font-medium text-blue-600">Process file ></button
 										>
 									{:else}<span class=" flex justify-end font-medium text-blue-600">Processed</span>
 									{/if}</TableBodyCell
@@ -348,7 +363,6 @@
 								<TableBodyCell class=" rounded-md bg-transparent"
 									><span class=" flex items-center justify-end gap-4">
 										{#if items.is_processing_done && items.file_data}
-											<!-- Dropdown for processed files -->
 											<div class="dropdown-trigger">
 												<svg
 													width="17"
