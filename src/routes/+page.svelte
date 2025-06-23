@@ -203,7 +203,7 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					user_id: '68131e7bb9f75b267c7386a9',
+					user_id: user_id,
 					project_id: archiveConfirmProjectID
 				})
 			});
