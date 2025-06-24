@@ -107,7 +107,7 @@
 				{selectedRule?.rule_name || 'No Rule Selected'}
 			</span>
 			<span class="flex items-center justify-center font-medium text-[#00000080]">
-				Pinned to: {selectedRule?.tag_name || 'None'}
+				Pinned to: {selectedRule?.pin ? selectedRule.tag_name : 'None'}
 			</span>
 		</div>
 		{#if selectedRule?.rules?.[0]}
@@ -276,7 +276,7 @@
 								<TableBodyCell class="max-w-[300px] truncate rounded-md" title={rule.rule_name}>
 									{rule.rule_name}
 								</TableBodyCell>
-								<TableBodyCell>{rule.tag_name || 'None'}</TableBodyCell>
+								<TableBodyCell>{rule.pin ? rule.tag_name : 'None'}</TableBodyCell>
 								<TableBodyCell></TableBodyCell>
 								<TableBodyCell></TableBodyCell>
 								<TableBodyCell></TableBodyCell>
