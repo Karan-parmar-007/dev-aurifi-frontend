@@ -24,7 +24,7 @@
 	let currentTab = $state('Insertion');
 	let isFormOpen = $state(false); // Modal closed by default
 	let isLoading = $state(false);
-	let rules = $state(data.rules.rules);
+	let rules = $state(data?.rules?.rules || []);
 	let selectedRule = $state(null); // Store the selected rule for modal
 
 	const fetchFiles = async () => {
