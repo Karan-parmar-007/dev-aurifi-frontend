@@ -72,12 +72,16 @@
 			const matchingRule = savedRules.find(
 				(rule) => JSON.stringify(rule.rules.flat()) === JSON.stringify(initialData)
 			);
+			console.log('matching rule value: ', matchingRule);
 			if (matchingRule) {
+				console.log('matching rule id found');
+
 				selectedRuleId = matchingRule._id;
 				ruleName = matchingRule.rule_name;
 				pinRule = matchingRule.pin;
 				tagName = matchingRule.tag_name;
 			} else {
+				console.log('no matching rule id found');
 				selectedRuleId = '';
 				ruleName = '';
 				pinRule = false;
@@ -87,9 +91,10 @@
 
 	// Update form when a saved rule is selected (only if not in edit mode)
 	$effect(() => {
-		if (selectedRuleId && !initialData) {
-			const selectedRule = savedRules.find((rule) => rule._id === selectedRuleId);
+		if (selectedRuleId) {
+			const selectedRule = savedRules.find((rule) => rule.rule_id === selectedRuleId);
 			if (selectedRule) {
+				console.log('selected rules present: ', $state.snapshot(selectedRule));
 				rules = selectedRule.rules.flat().map((rule: Rule) => ({ ...rule }));
 				ruleName = selectedRule.rule_name;
 				pinRule = selectedRule.pin;
@@ -311,14 +316,17 @@
 	async function fetchSavedRules() {
 		try {
 			isLoading = true;
-			const response = await fetch(`${VITE_API_URL}/rules_book_debt/get_all_rules/${user_id}`);
+			const response = await fetch(
+				`${VITE_API_URL}/rules_book_debt/get_filtered_rules_for_project?project_id=${projectId}&user_id=${user_id}`
+			);
 			const result = await response.json();
 			if (!response.ok || result.status !== 'success') {
 				console.error('API Error:', result.details || response.statusText);
 				savedRules = [];
 				return;
 			}
-			savedRules = result.rules || [];
+			savedRules = result.rules.ejection || [];
+			console.log($state.snapshot(savedRules));
 		} catch (error) {
 			console.error('Error fetching saved rules:', error);
 			savedRules = [];
@@ -377,7 +385,7 @@
 			<span class="w-[40%]">
 				<Select bind:value={selectedRuleId} placeholder="Select a saved rule">
 					{#each savedRules as rule}
-						<option value={rule._id}>{rule.rule_name}</option>
+						<option value={rule.rule_id}>{rule.rule_name}</option>
 					{/each}
 				</Select>
 			</span>
