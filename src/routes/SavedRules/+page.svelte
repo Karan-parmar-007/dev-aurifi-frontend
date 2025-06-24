@@ -16,6 +16,7 @@
 	} from 'flowbite-svelte';
 	import { user_id, VITE_API_URL } from '$lib/constants';
 	import { SideBar } from '../../store/toogleModal.svelte';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
 	console.log('data: ', data);
@@ -51,6 +52,10 @@
 			isLoading = false;
 		}
 	};
+
+	onMount(() => {
+		fetchFiles();
+	});
 
 	const deleteRule = async (ruleId: string) => {
 		try {
@@ -121,6 +126,7 @@
 						<Select value={rule.operator} disabled class="cursor-not-allowed bg-gray-100">
 							<option value="equal to">equal to</option>
 							<option value="less than">less than</option>
+							<option value="greater than">greater than</option>
 							<option value="includes">includes</option>
 						</Select>
 						<Input type="text" value={rule.value} disabled class="cursor-not-allowed bg-gray-100" />
