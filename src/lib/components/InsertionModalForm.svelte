@@ -33,7 +33,7 @@
 		operator: 'includes',
 		value: '',
 		connector: 'THEN',
-		then: 'reject'
+		then: 'accept'
 	};
 
 	// Reactive state with default rules
@@ -87,40 +87,19 @@
 
 	// Update form when a rule is selected from dropdown
 	$effect(() => {
-		if (selectedRuleId) {
+		if (selectedRuleId && !initialData) {
 			const selectedRule = savedRules.find((rule) => rule._id === selectedRuleId);
 			if (selectedRule) {
-				rules = selectedRule.rules.flat(); // Flatten the nested rules array
+				rules = selectedRule.rules.flat().map((rule: Rule) => ({ ...rule })); // Flatten the nested rules array
 				ruleName = selectedRule.rule_name;
 				pinRule = selectedRule.pin;
 				tagName = selectedRule.tag_name;
 			}
-		} else {
-			// Reset form when no rule is selected
-			rules = [
-				{
-					column: '',
-					operator: 'includes',
-					value: '',
-					connector: 'THEN',
-					then: 'accept'
-				}
-			];
-			ruleName = '';
-			pinRule = false;
 		}
 	});
 
 	function addRule(index: number, connector: 'THEN' | 'AND' | 'OR') {
-		rules.splice(index + 1, 0, {
-			column: '',
-			operator: 'includes',
-			value: '',
-			connector: 'THEN',
-			then: ''
-		});
-
-		// Update the connector of the previous rule
+		rules.splice(index + 1, 0, { ...defaultRule, connector: 'THEN', then: '' });
 		rules[index].connector = connector;
 	}
 
@@ -131,12 +110,8 @@
 		}
 		if (rules.length > 1) {
 			rules.splice(index, 1);
-
-			// If we removed any but the last rule, ensure connectors stay consistent
-			if (index < rules.length) {
-				if (index > 0) {
-					rules[index - 1].connector = rules[index].connector;
-				}
+			if (index < rules.length && index > 0) {
+				rules[index - 1].connector = rules[index]?.connector || 'THEN';
 			}
 		}
 	}
@@ -175,13 +150,9 @@
 
 	// Get input type based on column's datatype
 	function getInputType(columnName: string): string {
-		if (!columnName || !datatypeMapping[columnName]) {
-			return 'text';
-		}
-
-		const datatype = datatypeMapping[columnName];
-
-		switch (datatype.toLowerCase()) {
+		if (!columnName || !datatypeMapping[columnName]) return 'text';
+		const datatype = datatypeMapping[columnName].toLocaleLowerCase();
+		switch (datatype) {
 			case 'number':
 			case 'integer':
 			case 'float':
@@ -200,18 +171,13 @@
 
 	// Get appropriate operators based on column's datatype
 	function getOperatorsForColumn(columnName: string): string[] {
-		if (!columnName || !datatypeMapping[columnName]) {
-			return operators;
-		}
-
-		const datatype = datatypeMapping[columnName];
-
-		switch (datatype.toLowerCase()) {
+		if (!columnName || !datatypeMapping[columnName]) return operators;
+		const datatype = datatypeMapping[columnName].toLocaleLowerCase();
+		switch (datatype) {
 			case 'number':
 			case 'integer':
 			case 'float':
 			case 'double':
-				return ['equal to', 'less than', 'greater than'];
 			case 'date':
 			case 'datetime':
 				return ['equal to', 'less than', 'greater than'];
@@ -223,21 +189,18 @@
 	}
 
 	// Submit handler for immediate application
-	function handleSubmit() {
-		// Validate rules
+	async function handleSubmit() {
 		const validRules = rules.filter((rule) => rule.column && rule.value !== '');
-
-		if (validRules.length > 0) {
-			// Call the parent's function and get the result
-			const result = processRules(validRules, 'insertion');
-
-			if (result && result.success) {
-				console.log(result.message);
-				InsertionModal.isInsertionModalOpen = false;
-			}
+		if (validRules.length === 0) {
+			errorMessage = 'Please fill in all rule fields';
+			return;
+		}
+		const result = processRules(validRules, 'insertion');
+		if (result && result.success) {
+			console.log(result.message);
+			InsertionModal.isInsertionModalOpen = false;
 		} else {
-			// Handle validation error
-			alert('Please fill in all rule fields');
+			errorMessage = 'Failed to apply rules';
 		}
 	}
 
@@ -324,6 +287,7 @@
 			columns = data.column_names || [];
 		} catch (error) {
 			console.error('Error fetching column data:', error);
+			columns = [];
 		} finally {
 			isLoading = false;
 		}
@@ -351,32 +315,24 @@
 		}
 	};
 
-	const fetchSavedRules = async () => {
+	async function fetchSavedRules() {
 		try {
 			isLoading = true;
 			const response = await fetch(`${VITE_API_URL}/rules_book_debt/get_all_rules/${user_id}`);
-
-			if (!response.ok) {
-				console.log('Response not OK: ', response.status, response.statusText);
-				savedRules = [];
-				console.log(response);
-			}
-
 			const result = await response.json();
-			if (result.status !== 'success') {
-				console.error('API Error: ', result.details);
+			if (!response.ok || result.status !== 'success') {
+				console.error('API Error:', result.details || response.statusText);
 				savedRules = [];
-				isLoading = false;
 				return;
 			}
-			savedRules = result.rules;
-			console.log(savedRules);
-			isLoading = false;
+			savedRules = result.rules || [];
 		} catch (error) {
-			console.error('error: ', error);
+			console.error('Error fetching saved rules:', error);
+			savedRules = [];
+		} finally {
 			isLoading = false;
 		}
-	};
+	}
 
 	onMount(() => {
 		fetchColumns();
@@ -424,14 +380,7 @@
 		</div>
 	{:else}
 		<div class="modal-header">
-			<h2>
-				{initialData ? 'Edit' : 'New'}
-				{savingRules
-					? 'Save Rule'
-					: initialData
-						? ` Insertion Rule for ${tagName}`
-						: ` Insertion Rule for ${tagName}`}
-			</h2>
+			<h2>{initialData ? 'Edit' : 'New'} Insertion Rule</h2>
 			<span class="w-[40%]">
 				<Select bind:value={selectedRuleId} placeholder="Select a saved rule">
 					{#each savedRules as rule}
@@ -449,11 +398,11 @@
 			{#each rules as rule, i}
 				<div class="relative flex flex-1 flex-col gap-4">
 					<div class="flex w-full flex-1 items-center gap-2">
-						<div class="">IF</div>
+						<div>IF</div>
 						<div class="w-full">
 							<select
-								value={rule.column}
-								onchange={(e) => updateColumn(i, e.target.value)}
+								bind:value={rule.column}
+								onchange={(e) => updateColumn(i, e.currentTarget.value)}
 								class="w-full rounded border border-gray-300 p-2"
 							>
 								<option value="" disabled>Select Column</option>
@@ -465,9 +414,9 @@
 					</div>
 					<div class="flex gap-2">
 						<select
+							bind:value={rule.operator}
+							onchange={(e) => updateOperator(i, e.currentTarget.value)}
 							class="flex-[1] rounded border border-gray-300 p-2"
-							value={rule.operator}
-							onchange={(e) => updateOperator(i, e.target.value)}
 						>
 							{#each getOperatorsForColumn(rule.column) as op}
 								<option value={op}>{op}</option>
@@ -477,8 +426,8 @@
 						<input
 							class="flex-[2] rounded border border-gray-300 p-2"
 							type={getInputType(rule.column)}
-							value={rule.value}
-							oninput={(e) => updateValue(i, e.target.value)}
+							bind:value={rule.value}
+							oninput={(e) => updateValue(i, e.currentTarget.value)}
 							placeholder={rule.column ? `Enter ${rule.column} value` : 'Enter value'}
 						/>
 					</div>
@@ -490,10 +439,10 @@
 					{:else}
 						<div class="flex gap-2">
 							<select
-								class="flex-[1] rounded border border-gray-300 p-2"
-								value={rule.connector}
+								bind:value={rule.connector}
 								onchange={(e) =>
-									handleConnectorChange(i, e.target.value as 'THEN' | 'AND' | 'OR' | '')}
+									handleConnectorChange(i, e.currentTarget.value as 'THEN' | 'AND' | 'OR' | '')}
+								class="flex-[1] rounded border border-gray-300 p-2"
 							>
 								<option value="THEN">THEN</option>
 								<option value="AND">AND</option>
@@ -501,12 +450,12 @@
 							</select>
 
 							<select
+								bind:value={rule.then}
+								onchange={(e) => updateThen(i, e.currentTarget.value)}
 								class="flex-[2] rounded border border-gray-300 p-2"
-								value={rule.then}
-								onchange={(e) => updateThen(i, e.target.value)}
 							>
 								<option value="accept">Accept</option>
-								<option value="reject">Reject</option>
+								<!-- <option value="reject">Reject</option> -->
 							</select>
 						</div>
 					{/if}
@@ -540,7 +489,7 @@
 					Save As
 				</Button>
 				<Button color="dark" class="w-[40%]" onclick={handleSubmit}>
-					{initialData ? 'Update Rule' : 'Accept & Apply'}
+					{initialData ? 'Accept & Apply' : 'Accept & Apply'}
 				</Button>
 			</div>
 		{/if}
@@ -554,10 +503,6 @@
 		align-items: center;
 		margin-bottom: 16px;
 		padding-right: 5%;
-	}
-
-	.rule-number {
-		color: #555;
 	}
 
 	.remove-rule {

@@ -118,16 +118,21 @@
 
 	function handleConnectorChange(index: number, newConnector: 'THEN' | 'AND' | 'OR' | '') {
 		if (newConnector && newConnector !== 'THEN') {
+			// Add a new rule when AND/OR is selected
 			addRule(index, newConnector as 'AND' | 'OR');
 		} else if (!newConnector && rules.length > 1) {
+			// Remove the next rule when connector is removed
 			removeRule(index + 1);
 		} else if (newConnector) {
+			// Just update the connector
 			rules[index].connector = newConnector;
 		}
 	}
 
+	// Separate update functions to prevent cross-field resets
 	function updateColumn(index: number, value: string) {
 		rules[index].column = value;
+		// Reset value when column changes
 		rules[index].value = '';
 	}
 
@@ -143,6 +148,7 @@
 		rules[index].then = value;
 	}
 
+	// Get input type based on column's datatype
 	function getInputType(columnName: string): string {
 		if (!columnName || !datatypeMapping[columnName]) return 'text';
 		const datatype = datatypeMapping[columnName].toLowerCase();
@@ -163,6 +169,7 @@
 		}
 	}
 
+	// Get appropriate operators based on column's datatype
 	function getOperatorsForColumn(columnName: string): string[] {
 		if (!columnName || !datatypeMapping[columnName]) return operators;
 		const datatype = datatypeMapping[columnName].toLowerCase();
@@ -181,6 +188,7 @@
 		}
 	}
 
+	// Submit handler for immediate application
 	async function handleSubmit() {
 		const validRules = rules.filter((rule) => rule.column && rule.value !== '');
 		if (validRules.length === 0) {
@@ -196,17 +204,25 @@
 		}
 	}
 
+	// Save rule handler
 	async function handleSaveRule() {
+		// Validate rules
 		const validRules = rules.filter((rule) => rule.column && rule.value !== '');
 		if (validRules.length === 0) {
 			errorMessage = 'Please fill in all rule fields';
 			return;
 		}
+
+		// Validate rule name
 		if (!ruleName.trim()) {
 			errorMessage = 'Rule name is required';
 			return;
 		}
+
+		// Format rules as array of arrays
 		const formattedRules = validRules.map((rule) => [rule]);
+
+		// prepare payload
 		const payload = {
 			user_id,
 			rule_name: ruleName.trim(),
@@ -215,6 +231,7 @@
 			tag_name: tagName,
 			type_of_rule: 'ejection'
 		};
+
 		try {
 			isLoading = true;
 			const response = await fetch(`${VITE_API_URL}/rules_book_debt/add_rule?update=true`, {
@@ -256,7 +273,11 @@
 			const response = await fetch(
 				`${VITE_API_URL}/dataset/get_column_names?project_id=${projectId}`
 			);
-			if (!response.ok) throw new Error('Failed to fetch column data');
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch column data');
+			}
+
 			const data = await response.json();
 			columns = data.column_names || [];
 		} catch (error) {
@@ -271,7 +292,11 @@
 		try {
 			isLoading = true;
 			const response = await fetch(`${VITE_API_URL}/project/get_datatype_mapping/${projectId}`);
-			if (!response.ok) throw new Error('Failed to fetch datatype mapping');
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch datatype mapping');
+			}
+
 			const data = await response.json();
 			if (data.status === 'success' && data.datatype_mapping) {
 				datatypeMapping = data.datatype_mapping;
@@ -309,14 +334,7 @@
 	});
 </script>
 
-<Modal
-	title={savingRules
-		? 'Save Rule'
-		: initialData
-			? `Edit Ejection Rule for ${tagName || 'Tag'}`
-			: `New Ejection Rule for ${tagName || 'Tag'}`}
-	bind:open={EjectionModal.isEjectionModalOpen}
->
+<Modal bind:open={EjectionModal.isEjectionModalOpen}>
 	{#if savingRules}
 		<div class="flex flex-col gap-4">
 			{#if errorMessage}
@@ -358,7 +376,6 @@
 			<h2>{initialData ? 'Edit' : 'New'} Ejection Rule</h2>
 			<span class="w-[40%]">
 				<Select bind:value={selectedRuleId} placeholder="Select a saved rule">
-					<option value="">Select a saved rule</option>
 					{#each savedRules as rule}
 						<option value={rule._id}>{rule.rule_name}</option>
 					{/each}
@@ -426,7 +443,7 @@
 								class="flex-[2] rounded border border-gray-300 p-2"
 							>
 								<option value="reject">Reject</option>
-								<option value="accept">Accept</option>
+								<!-- <option value="accept">Accept</option> -->
 							</select>
 						</div>
 					{/if}
@@ -457,7 +474,7 @@
 					Save As
 				</Button>
 				<Button color="dark" class="w-[40%]" onclick={handleSubmit}>
-					{initialData ? 'Update Rule' : 'Accept & Apply'}
+					{initialData ? 'Accept & Apply' : 'Accept & Apply'}
 				</Button>
 			</div>
 		{/if}
