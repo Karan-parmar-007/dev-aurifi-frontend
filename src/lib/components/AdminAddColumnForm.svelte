@@ -66,7 +66,7 @@
 
 	onMount(async () => {
 		try {
-			const response = await fetch('http://127.0.0.1:5000/api/v1/admin/get_asset_classes', {
+			const response = await fetch(`${VITE_API_URL}/admin/get_asset_classes`, {
 				headers: { 'Content-Type': 'application/json' }
 			});
 			if (!response.ok) {
