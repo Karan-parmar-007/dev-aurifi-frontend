@@ -14,6 +14,8 @@
 	let urlParts = currentPath.split('/');
 	let project_id = urlParts[3];
 
+	let progressCompleted = $state(fales);
+
 	let fileData = $state([]);
 	let isloading = $state(false);
 	let finalized_files = $state([]);
@@ -81,8 +83,10 @@
 			if (data.status === 'success') {
 				processCompleted = data.is_complete;
 				if (processCompleted === true) {
+					processCompleted = true;
 					await fetchFinalFiles();
 				} else {
+					processCompleted = false;
 					await fetchData();
 				}
 			}
@@ -214,9 +218,11 @@
 	const handleDownloadOption = async (option: string, file_path: string) => {
 		try {
 			// Fetch the tracking files metadata (which is JSON)
-			const response = await fetch(
-				`${VITE_API_URL}/dataset/get_finalized_data?project_id=${project_id}`
-			);
+			let api_url = `${VITE_API_URL}/dataset/fetch_data_after_applied_rules?project_id=${project_id}`;
+			if (processCompleted) {
+				api_url = `${VITE_API_URL}/dataset/get_finalized_data?project_id=${project_id}`;
+			}
+			const response = await fetch(`${api_url}`);
 			if (!response.ok) {
 				console.error('Error fetching data:', response.status, response.statusText);
 				return;
