@@ -14,7 +14,7 @@
 	let urlParts = currentPath.split('/');
 	let project_id = urlParts[3];
 
-	let progressCompleted = $state(fales);
+	let progressCompleted = $state(false);
 
 	let fileData = $state([]);
 	let isloading = $state(false);
@@ -165,6 +165,7 @@
 
 	const downloadFile = async (file_path: string) => {
 		try {
+			console.log('file path:', file_path);
 			// Use query parameter instead of path parameter
 			const downloadUrl = `${VITE_API_URL}/project/download_file?file_path=${encodeURIComponent(file_path)}`;
 			console.log('Download URL:', downloadUrl);
@@ -234,6 +235,8 @@
 			}
 
 			const { versions, tracking_files } = data;
+			console.log('versions', versions);
+			console.log('tracking_files', tracking_files);
 			const rowsAddedFiles = tracking_files?.rows_added_files || [];
 			const rowsRemovedFiles = tracking_files?.rows_removed_files || [];
 
@@ -262,6 +265,9 @@
 					break;
 				}
 				case 'Current': {
+					console.log('finding with data: ', selectedTag);
+					console.log('finding with version: ', versions);
+
 					const version = versions.find(
 						(v: any) => v.tag_name.toLowerCase() === selectedTag.toLowerCase()
 					);
@@ -424,7 +430,7 @@
 										PreviewModal.isPreviewModalOpen = true;
 									}}>Open</Button
 								>
-								<div class="dropdown-trigger">
+								<button class="dropdown-trigger" onclick={() => (selectedTag = file.tag_name)}>
 									<svg
 										width="17"
 										height="17"
@@ -460,7 +466,7 @@
 											Ejected
 										</DropdownItem>
 									</Dropdown>
-								</div>
+								</button>
 							</span>
 						</div>
 					</div>
