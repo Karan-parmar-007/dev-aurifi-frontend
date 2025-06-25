@@ -33,6 +33,10 @@
 		});
 	});
 
+	$effect(() => {
+		$inspect('sortedFileData: ', sortedFileData);
+	});
+
 	const fetchData = async () => {
 		try {
 			isloading = true;
@@ -451,27 +455,6 @@
 										</DropdownItem>
 									</Dropdown>
 								</div>
-								<button aria-label="delete button">
-									<svg
-										width="14"
-										height="17"
-										class="cursor-pointer"
-										viewBox="0 0 14 17"
-										fill="none"
-										xmlns="http://www.w3.org/2000/svg"
-									>
-										<path
-											d="M0.962402 15.1112C0.962402 16.1548 1.82382 17.0001 2.8874 17.0001H10.5874C11.6509 17.0001 12.5123 16.1548 12.5123 15.1112V3.77783H0.962402V15.1112Z"
-											fill="black"
-											fill-opacity="0.28"
-										/>
-										<path
-											d="M10.1062 0.94443L9.14365 0H4.33122L3.3687 0.94443H0V2.83333H13.4749V0.94443H10.1062Z"
-											fill="black"
-											fill-opacity="0.28"
-										/>
-									</svg>
-								</button>
 							</span>
 						</div>
 					</div>
