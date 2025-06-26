@@ -135,6 +135,7 @@
 		console.log('payload: ', payload);
 
 		try {
+			isLoading = true;
 			// Select API endpoint based on isTransaction flag
 			const apiEndpoint = isTransaction
 				? `${VITE_API_URL}/transaction_dataset/update_currency_colum`
@@ -175,6 +176,8 @@
 				});
 			}
 			alert('Failed to update currency format. Please try again.');
+		} finally {
+			isLoading = false;
 		}
 	};
 </script>

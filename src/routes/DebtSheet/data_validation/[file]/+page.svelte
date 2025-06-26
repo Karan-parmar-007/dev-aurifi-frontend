@@ -401,7 +401,9 @@
 											>
 												Error
 											</button>
-										{:else if column.is_floating}
+										{:else if fixStatus[column.column_name]?.success}
+											<button class="text-[#2362EB]">Fixed!</button>
+										{:else}
 											<button
 												class="text-[#2362EB]"
 												onclick={() => {
@@ -411,8 +413,6 @@
 											>
 												Fix
 											</button>
-										{:else}
-											<button class="text-[#2362EB]">Fixed!</button>
 										{/if}
 									</TableBodyCell>
 								</TableBodyRow>

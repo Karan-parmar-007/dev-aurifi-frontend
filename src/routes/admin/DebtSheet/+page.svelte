@@ -92,7 +92,7 @@
 						{#each data.data as column}
 							<TableBodyRow>
 								<TableBodyCell>{column.column_name}</TableBodyCell>
-								<TableBodyCell>{column.description}</TableBodyCell>
+								<TableBodyCell><h2 class="overflow-scroll">{column.description}</h2></TableBodyCell>
 								<TableBodyCell>
 									<div class="alt-names-display">
 										{#if column.alt_names}
