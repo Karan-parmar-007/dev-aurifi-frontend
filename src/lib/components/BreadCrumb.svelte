@@ -12,7 +12,7 @@
 		{ path: '', label: 'Upload File' },
 		{ path: 'file_overview', label: 'File Overview' },
 		{ path: 'column_mapping', label: 'Column Mapping' },
-		// { path: 'dataType_mapping', label: 'DataType Mapping' },
+		{ path: 'data_validation', label: 'DataType Mapping' },
 		{ path: 'Tagging', label: 'Tagging' },
 		{ path: 'rule_setup', label: 'Modify Tagged' },
 		{ path: 'retagged_items', label: 'Finalize Data Sheet' }
