@@ -92,9 +92,11 @@
 						{#each data.data as column}
 							<TableBodyRow>
 								<TableBodyCell>{column.column_name}</TableBodyCell>
-								<TableBodyCell><h2 class="overflow-scroll">{column.description}</h2></TableBodyCell>
-								<TableBodyCell>
-									<div class="alt-names-display">
+								<TableBodyCell class="min-w-[40vw] "
+									><h2 class="text-wrap">{column.description}</h2></TableBodyCell
+								>
+								<TableBodyCell class="min-w-[40vw]  ">
+									<div class="alt-names-display flex w-full flex-wrap">
 										{#if column.alt_names}
 											{#each Array.isArray(column.alt_names) ? column.alt_names : [column.alt_names] as altName}
 												<span class="m-1 rounded-xl bg-gray-200 p-1.5">{altName}</span>
