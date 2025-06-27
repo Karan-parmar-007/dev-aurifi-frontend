@@ -113,7 +113,7 @@
 			<Button
 				color="dark"
 				class="bg-dark-100 cursor-pointer rounded-xl text-white"
-				on:click={() => (modal.isModalOpen = true)}
+				onclick={() => (modal.isModalOpen = true)}
 			>
 				+ Upload debt sheet
 			</Button>
