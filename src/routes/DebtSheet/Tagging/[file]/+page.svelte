@@ -308,7 +308,7 @@
 								</TableBodyCell>
 								<TableBodyCell>
 									<div class="flex items-center justify-center gap-2">
-										<span class="flex-1"><Button color="blue" class="w-32">open</Button></span>
+										<!-- <span class="flex-1"><Button color="blue" class="w-32">open</Button></span> -->
 										<span class="flex items-center justify-between">
 											<button
 												class="pe-2"
