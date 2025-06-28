@@ -137,7 +137,7 @@
 				: {
 						transaction_id: project_id,
 						version_id: version.version_id,
-						delete_children: false
+						delete_children: true
 					};
 
 			const response = await fetch(apiUrl, {
@@ -220,17 +220,17 @@
 											.join(' | ')}
 									</span>
 									<span
-										class="text-nowrap rounded-lg border-[1px] border-[#08FF00] bg-[#FFC45B33] p-1 text-[#242C3E]"
+										class="rounded-lg border-[1px] border-[#08FF00] bg-[#FFC45B33] p-1 text-nowrap text-[#242C3E]"
 									>
 										<h3>Accepted: {version.rows_after}</h3>
 									</span>
 									<span
-										class="text-nowrap rounded-lg border-[1px] border-[#FF0000] bg-[#FFEDED] p-1 text-[#242C3E]"
+										class="rounded-lg border-[1px] border-[#FF0000] bg-[#FFEDED] p-1 text-nowrap text-[#242C3E]"
 									>
 										<h3>Rejected: {version.rows_removed}</h3>
 									</span>
 									<span
-										class="text-nowrap rounded-lg border-[1px] border-[#BCBCBC] bg-[#FFFFFF] p-1 text-[#242C3E]"
+										class="rounded-lg border-[1px] border-[#BCBCBC] bg-[#FFFFFF] p-1 text-nowrap text-[#242C3E]"
 									>
 										<h3>Amt: {version.total_amount_after.toLocaleString()}</h3>
 									</span>
@@ -317,7 +317,7 @@
 				{/each}
 			{/if}
 			<div class="flex flex-col items-center justify-center gap-4">
-				<div class="pe-18 flex w-full items-center justify-between">
+				<div class="flex w-full items-center justify-between pe-18">
 					<span class="flex items-center justify-center">
 						<img src="/excel.png" alt="excel icon" width="40" />
 						<h2>Original File</h2>

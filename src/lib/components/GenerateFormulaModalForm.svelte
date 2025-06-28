@@ -56,7 +56,7 @@
 			columnValue: '',
 			inputType: 'text',
 			connector: '',
-			isBoolean: false,
+			isBoolean: true,
 			booleanValue: ''
 		}
 	]);
@@ -336,16 +336,13 @@
 
 		// Send rules to backend
 		try {
-			const response = await fetch(
-				`${VITE_API_URL}/transaction_dataset/add_column_with_rules`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(payload)
-				}
-			);
+			const response = await fetch(`${VITE_API_URL}/transaction_dataset/add_column_with_rules`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
 
 			if (!response.ok) {
 				throw new Error('Failed to save rules');
@@ -429,15 +426,14 @@
 					</div>
 				{:else}
 					<div class="flex items-center gap-2">
-						<Checkbox bind:checked={condition.isBoolean}>Is Boolean</Checkbox>
-						{#if condition.isBoolean}
-							<Select
-								items={booleanValues}
-								placeholder="Select Boolean Value"
-								bind:value={condition.booleanValue}
-								on:change={(e) => updateCondition(index, 'booleanValue', e.target.value)}
-							/>
-						{/if}
+						<!-- <Checkbox bind:checked={condition.isBoolean}>Is Boolean</Checkbox> -->
+
+						<Select
+							items={booleanValues}
+							placeholder="Select Boolean Value"
+							bind:value={condition.booleanValue}
+							on:change={(e) => updateCondition(index, 'booleanValue', e.target.value)}
+						/>
 					</div>
 				{/if}
 
