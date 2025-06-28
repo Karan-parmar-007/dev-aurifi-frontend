@@ -212,13 +212,11 @@
 	/>
 {/if}
 {#if errorColumn}
-	<Modal
-		title="Data Error"
-		open={!!errorColumn}
-		onclose={() => (errorColumn = null)}
-	>
-		<p>The values in the "{errorColumn}" column are unexpected. Please review and correct the data.</p>
-		<div class="flex justify-end mt-4">
+	<Modal title="Data Error" open={!!errorColumn} onclose={() => (errorColumn = null)}>
+		<p>
+			The values in the "{errorColumn}" column are unexpected. Please review and correct the data.
+		</p>
+		<div class="mt-4 flex justify-end">
 			<Button color="dark" onclick={() => (errorColumn = null)}>Close</Button>
 		</div>
 	</Modal>
@@ -403,7 +401,9 @@
 											>
 												Error
 											</button>
-										{:else if column.is_floating}
+										{:else if fixStatus[column.column_name]?.success}
+											<button class="text-[#2362EB]">Fixed!</button>
+										{:else}
 											<button
 												class="text-[#2362EB]"
 												onclick={() => {
@@ -413,8 +413,6 @@
 											>
 												Fix
 											</button>
-										{:else}
-											<button class="text-[#2362EB]">Fixed!</button>
 										{/if}
 									</TableBodyCell>
 								</TableBodyRow>
