@@ -138,7 +138,7 @@
 			isLoading = true;
 			// Select API endpoint based on isTransaction flag
 			const apiEndpoint = isTransaction
-				? `${VITE_API_URL}/transaction_dataset/update_currency_colum`
+				? `${VITE_API_URL}/transaction_dataset/update_currency_column`
 				: `${VITE_API_URL}/dataset/update_currency_column`;
 
 			const response = await fetch(apiEndpoint, {
