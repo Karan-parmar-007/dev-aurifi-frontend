@@ -15,25 +15,35 @@
 	import { goto } from '$app/navigation';
 	import { VITE_API_URL } from '$lib/constants';
 
+	interface SystemColumn {
+		column_name: string;
+		general_mandatory: boolean;
+	}
+
+	interface GptMapping {
+		confidence: string;
+		matchedColumn: string;
+		systemColumn: string;
+	}
+
 	type ColumnRow = {
 		uploaded: string;
 		inputValue: string;
 		selected: string;
 		suggestions: Array<{ column_name: string }>;
 		showSuggestions: boolean;
-		highlightedIndex: number; // New: Track highlighted suggestion
+		highlightedIndex: number;
+		confidence?: string;
 	};
 
 	let datasetColumns = $state<string[]>([]);
-	let systemColumns = $state<(string | { column_name: string })[]>([]);
+	let systemColumns = $state<SystemColumn[]>([]);
 	let rows = $state<ColumnRow[]>([]);
 	let isLoading = $state(true);
 	let mappings = $state<Record<string, string>>({});
-
 	let pageUrl = page.url.pathname;
 	let urlParts = pageUrl.split('/');
 	const project_id = urlParts[3];
-
 	let currentFile = $state('');
 	let unmappedMandatoryCount = $state(0);
 
@@ -43,12 +53,26 @@
 				currentFile = localStorage.getItem('currentFile') || 'No file selected';
 			}
 
-			const [datasetResponse, systemResponse] = await Promise.all([
-				fetch(
-					`${VITE_API_URL}/transaction_dataset/get_column_names?transaction_id=${project_id}`
-				),
-				fetch(`${VITE_API_URL}/admin/get_system_transaction_columns`)
+			const [datasetResponse, systemResponse, gptMappingResponse] = await Promise.all([
+				fetch(`${VITE_API_URL}/transaction_dataset/get_column_names?transaction_id=${project_id}`),
+				fetch(`${VITE_API_URL}/admin/get_system_transaction_columns`),
+				fetch(`${VITE_API_URL}/transaction_dataset/get_gpt_column_mapping/${project_id}`)
 			]);
+
+			let gptMappings: Record<string, { systemColumn: string; confidence: string }> = {};
+			if (gptMappingResponse.ok) {
+				const gptData = await gptMappingResponse.json();
+				if (gptData.status === 'success' && gptData.gpt_response.status === 'success') {
+					gptData.gpt_response.response.forEach((mapping: GptMapping) => {
+						gptMappings[mapping.matchedColumn] = {
+							systemColumn: mapping.systemColumn,
+							confidence: mapping.confidence
+						};
+					});
+				}
+			} else {
+				console.warn('GPT mapping API failed, falling back to empty mappings');
+			}
 
 			if (!datasetResponse.ok || !systemResponse.ok) {
 				throw new Error('Failed to fetch column data');
@@ -62,21 +86,33 @@
 
 			rows = datasetColumns.map((column) => ({
 				uploaded: column,
+				inputValue: gptMappings[column]?.systemColumn || '',
+				selected: gptMappings[column]?.systemColumn || '',
+				suggestions: [],
+				showSuggestions: false,
+				highlightedIndex: -1,
+				confidence: gptMappings[column]?.confidence
+			}));
+
+			datasetColumns.forEach((col) => {
+				mappings[col] = gptMappings[col]?.systemColumn || '';
+			});
+
+			updateUnmappedMandatoryCount();
+		} catch (error) {
+			console.error('Error fetching column data:', error);
+			rows = datasetColumns.map((column) => ({
+				uploaded: column,
 				inputValue: '',
 				selected: '',
 				suggestions: [],
 				showSuggestions: false,
-				highlightedIndex: -1 // Initialize with no highlighted suggestion
+				highlightedIndex: -1,
+				confidence: undefined
 			}));
-
 			datasetColumns.forEach((col) => {
 				mappings[col] = '';
 			});
-
-			// Initialize unmapped mandatory count
-			updateUnmappedMandatoryCount();
-		} catch (error) {
-			console.error('Error fetching column data:', error);
 		} finally {
 			isLoading = false;
 		}
@@ -90,39 +126,19 @@
 		).length;
 	}
 
-	function filterSuggestions(index) {
+	function filterSuggestions(index: number) {
 		const row = rows[index];
-
-		// Get all columns that are already selected by other rows
 		const otherSelected = rows.filter((r, i) => i !== index && r.selected).map((r) => r.selected);
-		let availableColumns: any[] = [];
+		const availableColumns = systemColumns.filter(
+			(opt) => !otherSelected.includes(opt.column_name)
+		);
 
-		// Filter out already selected columns
-		if (systemColumns.length > 0 && typeof systemColumns[0] === 'string') {
-			availableColumns = systemColumns.filter((col) => !otherSelected.includes(col));
-		} else {
-			availableColumns = systemColumns.filter((opt) => !otherSelected.includes(opt.column_name));
-		}
-
-		// Show all available options when empty, or filter based on input
 		if (!row.inputValue.trim()) {
-			// Show all available options when input is empty
-			if (availableColumns.length > 0 && typeof availableColumns[0] === 'string') {
-				row.suggestions = availableColumns.map((col) => ({ column_name: col }));
-			} else {
-				row.suggestions = availableColumns;
-			}
+			row.suggestions = availableColumns.map((col) => ({ column_name: col.column_name }));
 		} else {
-			// Filter based on input value
-			if (availableColumns.length > 0 && typeof availableColumns[0] === 'string') {
-				row.suggestions = availableColumns
-					.filter((col) => col.toLowerCase().includes(row.inputValue.toLowerCase()))
-					.map((col) => ({ column_name: col }));
-			} else {
-				row.suggestions = availableColumns.filter((opt) =>
-					opt.column_name.toLowerCase().includes(row.inputValue.toLowerCase())
-				);
-			}
+			row.suggestions = availableColumns
+				.filter((opt) => opt.column_name.toLowerCase().includes(row.inputValue.toLowerCase()))
+				.map((col) => ({ column_name: col.column_name }));
 		}
 
 		row.showSuggestions = row.suggestions.length > 0;
@@ -133,9 +149,9 @@
 		rows[index].inputValue = suggestion;
 		rows[index].selected = suggestion;
 		rows[index].showSuggestions = false;
-		rows[index].highlightedIndex = -1; // Reset highlighted index
+		rows[index].highlightedIndex = -1;
+		rows[index].confidence = undefined;
 		mappings[rows[index].uploaded] = suggestion;
-
 		updateUnmappedMandatoryCount();
 	}
 
@@ -143,26 +159,15 @@
 		setTimeout(() => {
 			const row = rows[index];
 			const inputValue = row.inputValue.trim();
-
-			let match: string | { column_name: string } | null = null;
-
-			if (systemColumns.length > 0) {
-				if (typeof systemColumns[0] === 'string') {
-					match = (systemColumns as string[]).includes(inputValue) ? inputValue : null;
-				} else {
-					match =
-						(systemColumns as { column_name: string }[]).find(
-							(opt) => opt.column_name === inputValue
-						) || null;
-				}
-			}
+			const match = systemColumns.find((opt) => opt.column_name === inputValue) || null;
 
 			if (!match) {
 				row.inputValue = '';
 				row.selected = '';
 				mappings[row.uploaded] = '';
+				row.confidence = undefined;
 			} else {
-				const selectedColumn = typeof match === 'string' ? match : match.column_name;
+				const selectedColumn = match.column_name;
 				const isAlreadySelected = rows.some((r, i) => i !== index && r.selected === selectedColumn);
 
 				if (isAlreadySelected) {
@@ -170,15 +175,16 @@
 					row.inputValue = '';
 					row.selected = '';
 					mappings[row.uploaded] = '';
+					row.confidence = undefined;
 				} else {
 					row.selected = selectedColumn;
 					mappings[row.uploaded] = selectedColumn;
+					row.confidence = undefined;
 				}
 			}
 
 			row.showSuggestions = false;
-			row.highlightedIndex = -1; // Reset highlighted index
-
+			row.highlightedIndex = -1;
 			updateUnmappedMandatoryCount();
 		}, 200);
 	}
@@ -195,40 +201,34 @@
 			);
 
 			if (!response.ok) {
-				console.log('error: ', response);
+				throw new Error('Failed to start datatype conversion');
 			}
 
 			const data = await response.json();
-			console.log(data);
 			goto(`/Transactions/data_validation/${project_id}`);
 		} catch (error) {
-			console.log('error: ', error);
+			console.error('Error:', error);
 		}
 	};
 
 	const saveColumnMappings = async () => {
 		try {
-			console.log('mappings: ', mappings);
-
 			isLoading = true;
 			const formdata = new FormData();
 			formdata.append('transaction_id', project_id);
 			formdata.append('mapped_columns', JSON.stringify(mappings));
 
-			const response = await fetch(
-				`${VITE_API_URL}/transaction_dataset/update_column_names`,
-				{
-					method: 'POST',
-					body: formdata
-				}
-			);
+			const response = await fetch(`${VITE_API_URL}/transaction_dataset/update_column_names`, {
+				method: 'POST',
+				body: formdata
+			});
 
 			if (!response.ok) {
 				throw new Error('Error sending column map');
 			}
 
 			const data = await response.json();
-			start_datatype_conversion_temp();
+			await start_datatype_conversion_temp();
 		} catch (error) {
 			console.error('Error:', error);
 		} finally {
@@ -236,9 +236,8 @@
 		}
 	};
 
-	function handleSuggestionClick(index: number, suggestion: any) {
-		const columnName = typeof suggestion === 'string' ? suggestion : suggestion.column_name;
-		selectSuggestion(index, columnName);
+	function handleSuggestionClick(index: number, suggestion: { column_name: string }) {
+		selectSuggestion(index, suggestion.column_name);
 	}
 
 	function handleInputFocus(index: number) {
@@ -246,21 +245,19 @@
 		rows[index].showSuggestions = rows[index].suggestions.length > 0;
 	}
 
-	// New: Handle keyboard navigation
 	function handleKeyDown(event: KeyboardEvent, index: number) {
 		const row = rows[index];
-
 		if (!row.showSuggestions || row.suggestions.length === 0) return;
 
 		switch (event.key) {
 			case 'ArrowDown':
 				event.preventDefault();
-				row.highlightedIndex = (row.highlightedIndex + 1) % row.suggestions.length; // Cycle to next suggestion
+				row.highlightedIndex = (row.highlightedIndex + 1) % row.suggestions.length;
 				break;
 			case 'ArrowUp':
 				event.preventDefault();
 				row.highlightedIndex =
-					row.highlightedIndex <= 0 ? row.suggestions.length - 1 : row.highlightedIndex - 1; // Cycle to previous suggestion
+					row.highlightedIndex <= 0 ? row.suggestions.length - 1 : row.highlightedIndex - 1;
 				break;
 			case 'Enter':
 				event.preventDefault();
@@ -272,7 +269,7 @@
 			case 'Escape':
 				event.preventDefault();
 				row.showSuggestions = false;
-				row.highlightedIndex = -1; // Reset highlighted index
+				row.highlightedIndex = -1;
 				break;
 		}
 	}
@@ -319,14 +316,13 @@
 					</TableHead>
 					<TableBody>
 						{#each rows as row, index}
-							<TableBodyRow class="">
+							<TableBodyRow>
 								<TableBodyCell class="w-auto max-w-[5%]">
 									<div class="text-md flex w-auto items-center font-normal text-gray-600">
 										{row.uploaded}
 									</div>
 								</TableBodyCell>
-
-								<TableBodyCell class="">
+								<TableBodyCell>
 									<div class="relative w-full">
 										<input
 											id="autocomplete-{index}"
@@ -340,7 +336,6 @@
 											class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900"
 											autocomplete="off"
 										/>
-
 										{#if row.showSuggestions && row.suggestions.length > 0}
 											<ul
 												class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-300 bg-white shadow-lg"
@@ -361,10 +356,13 @@
 										{/if}
 									</div>
 								</TableBodyCell>
-
 								<TableBodyCell>
 									<div class="text-md flex w-full items-center font-normal">
-										<h3 class="text-[#EF1F0F]">* 33% Reason Text</h3>
+										{#if row.confidence}
+											<span class="text-[#EF1F0F]">{row.confidence}</span>
+										{:else}
+											<span class="text-gray-500">Not mapped</span>
+										{/if}
 									</div>
 								</TableBodyCell>
 							</TableBodyRow>
@@ -374,7 +372,7 @@
 				<div class="flex w-full items-center justify-end py-10">
 					<Button
 						color="dark"
-						class="bg-dark-100 mt-6 h-[38px] w-[144px] max-w-40 cursor-pointer text-nowrap rounded-xl p-4 text-white"
+						class="bg-dark-100 mt-6 h-[38px] w-[144px] max-w-40 cursor-pointer rounded-xl p-4 text-nowrap text-white"
 						onclick={saveColumnMappings}
 						disabled={unmappedMandatoryCount > 0}
 					>
@@ -390,19 +388,16 @@
 	.relative {
 		position: relative;
 	}
-
 	ul {
 		list-style: none;
 		padding: 0;
 		margin: 0;
 	}
-
 	li {
 		padding: 8px 12px;
 		cursor: pointer;
 		transition: background-color 0.2s;
 	}
-
 	li:hover {
 		background-color: #f3f4f6;
 	}
