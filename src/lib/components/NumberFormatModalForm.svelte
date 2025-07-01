@@ -158,6 +158,13 @@
 </script>
 
 <Modal title="Fix Number" bind:open={NumberFormatModal.isNumberFormatModalOpen} size="md">
+	{#if isLoading}
+		<div class="absolute inset-0 flex items-center justify-center">
+			<div
+				class="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"
+			></div>
+		</div>
+	{/if}
 	<div class="flex h-full w-full flex-col gap-8 p-4">
 		<span class="flex items-center gap-2">
 			<Label class="w-[40%]">Convert to whole number:</Label>
