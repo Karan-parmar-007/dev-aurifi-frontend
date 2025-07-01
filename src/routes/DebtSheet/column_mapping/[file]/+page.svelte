@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import { page } from '$app/stores';
 	import BreadCrumb from '$lib/components/BreadCrumb.svelte';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
@@ -22,6 +22,7 @@
 		suggestions: Array<{ column_name: string }>;
 		showSuggestions: boolean;
 		highlightedIndex: number;
+		confidence: string;
 	};
 
 	// State variables
@@ -30,13 +31,33 @@
 	let rows = $state([]);
 	let isLoading = $state(true);
 	let mappings = $state({});
-
 	let pageUrl = page.url.pathname;
 	let urlParts = pageUrl.split('/');
 	const project_id = urlParts[3];
-
 	let currentFile = $state('');
 	let unmappedMandatoryCount = $state(0);
+
+	// Dummy API response
+	const apiResponse = {
+		response: [
+			{ confidence: "100%", matchedColumn: "unique_facility_identifier", systemColumn: "unique_facility_identifier" },
+			{ confidence: "100%", matchedColumn: "sanction_amount", systemColumn: "sanction_amount" },
+			{ confidence: "70%", matchedColumn: "Tags", systemColumn: "lender_name" },
+			{ confidence: "0%", matchedColumn: "unmapped", systemColumn: "optimization_type" },
+			{ confidence: "100%", matchedColumn: "serial_number", systemColumn: "serial_number" },
+			{ confidence: "100%", matchedColumn: "facility_type", systemColumn: "facility_type" },
+			{ confidence: "100%", matchedColumn: "sanction_date", systemColumn: "sanction_date" },
+			{ confidence: "100%", matchedColumn: "disbursement_amount", systemColumn: "disbursement_amount" },
+			{ confidence: "100%", matchedColumn: "disbursement_date", systemColumn: "disbursement_date" },
+			{ confidence: "100%", matchedColumn: "amount_outstanding", systemColumn: "amount_outstanding" },
+			{ confidence: "100%", matchedColumn: "evaluation_date", systemColumn: "evaluation_date" },
+			{ confidence: "100%", matchedColumn: "Security", systemColumn: "Security" },
+			{ confidence: "100%", matchedColumn: "book_debt_cover", systemColumn: "book_debt_cover" },
+			{ confidence: "100%", matchedColumn: "original_maturity_date", systemColumn: "original_maturity_date" },
+			{ confidence: "100%", matchedColumn: "revised_maturity_date", systemColumn: "revised_maturity_date" }
+		],
+		status: "success"
+	};
 
 	onMount(async () => {
 		try {
@@ -58,20 +79,25 @@
 			datasetColumns = datasetData.column_names || [];
 			systemColumns = systemData.data || [];
 
-			rows = datasetColumns.map((column) => ({
-				uploaded: column,
-				inputValue: '',
-				selected: '',
-				suggestions: [],
-				showSuggestions: false,
-				highlightedIndex: -1
-			}));
-
-			datasetColumns.forEach((col) => {
-				mappings[col] = '';
+			rows = datasetColumns.map((column) => {
+				const match = apiResponse.response.find(r => r.matchedColumn === column);
+				const selected = match && match.confidence !== "0%" ? match.systemColumn : '';
+				return {
+					uploaded: column,
+					inputValue: selected,
+					selected: selected,
+					suggestions: [],
+					showSuggestions: false,
+					highlightedIndex: -1,
+					confidence: match ? match.confidence : '0%'
+				};
 			});
 
-			// Initialize unmapped mandatory count
+			datasetColumns.forEach((col) => {
+				const match = apiResponse.response.find(r => r.matchedColumn === col);
+				mappings[col] = match && match.confidence !== "0%" ? match.systemColumn : '';
+			});
+
 			updateUnmappedMandatoryCount();
 		} catch (error) {
 			console.error('Error fetching column data:', error);
@@ -80,7 +106,6 @@
 		}
 	});
 
-	// Function to count unmapped mandatory columns
 	function updateUnmappedMandatoryCount() {
 		const mandatoryColumns = systemColumns.filter((col) => col.general_mandatory === true);
 		const mappedColumns = Object.values(mappings).filter((val) => val !== '');
@@ -91,20 +116,12 @@
 
 	function filterSuggestions(index) {
 		const row = rows[index];
-
-		// Get all columns that are already selected by other rows
 		const otherSelected = rows.filter((r, i) => i !== index && r.selected).map((r) => r.selected);
-		let availableColumns: any[] = [];
+		let availableColumns: any[] = systemColumns.filter((col) => !otherSelected.includes(col.column_name));
 
-		// Filter out already selected columns
-		availableColumns = systemColumns.filter((col) => !otherSelected.includes(col.column_name));
-
-		// Show all available column_name options when empty, or filter based on input
 		if (!row.inputValue.trim()) {
-			// Show only column_name from available columns
 			row.suggestions = availableColumns.map((col) => ({ column_name: col.column_name }));
 		} else {
-			// Filter based on input value, only for column_name
 			const inputLower = row.inputValue.toLowerCase();
 			row.suggestions = availableColumns
 				.map((col) => ({ column_name: col.column_name }))
@@ -115,20 +132,19 @@
 		row.highlightedIndex = row.suggestions.length > 0 ? 0 : -1;
 	}
 
-	// Update unmapped count whenever mappings change
 	function selectSuggestion(index, suggestion) {
 		const columnName = suggestion.column_name;
 		rows[index].inputValue = columnName;
 		rows[index].selected = columnName;
 		rows[index].showSuggestions = false;
 		rows[index].highlightedIndex = -1;
+		rows[index].confidence = apiResponse.response.find(r => r.systemColumn === columnName)?.confidence || '0%';
 
 		const canonicalColumn = systemColumns.find(
 			(col) => col.column_name === columnName || col.alt_names.includes(columnName)
 		);
 		mappings[rows[index].uploaded] = canonicalColumn ? canonicalColumn.column_name : columnName;
 
-		// Update unmapped count
 		updateUnmappedMandatoryCount();
 	}
 
@@ -143,6 +159,7 @@
 		if (!match) {
 			row.inputValue = '';
 			row.selected = '';
+			row.confidence = '0%';
 			mappings[row.uploaded] = '';
 		} else {
 			const selectedColumn = match.column_name;
@@ -152,17 +169,17 @@
 				console.error(`Column "${selectedColumn}" is already selected in another row.`);
 				row.inputValue = '';
 				row.selected = '';
+				row.confidence = '0%';
 				mappings[row.uploaded] = '';
 			} else {
 				row.selected = selectedColumn;
+				row.confidence = apiResponse.response.find(r => r.systemColumn === selectedColumn)?.confidence || '0%';
 				mappings[row.uploaded] = selectedColumn;
 			}
 		}
 
 		row.showSuggestions = false;
 		row.highlightedIndex = -1;
-
-		// Update unmapped count
 		updateUnmappedMandatoryCount();
 	}
 
@@ -180,13 +197,10 @@
 			});
 
 			if (!response.ok) {
-				console.log('response: ', response);
-
 				throw new Error(`Error fetching Data: ${response}`);
 			}
 
 			const data = await response.json();
-			console.log('data splits: ', data);
 			goto(`/DebtSheet/Tagging/${project_id}`);
 		} catch (error) {
 			console.log('error spliting data by tags: ', error);
@@ -209,7 +223,6 @@
 			}
 
 			const data = await response.json();
-			console.log(data);
 			isLoading = false;
 			goto(`/DebtSheet/data_validation/${project_id}`);
 		} catch (error) {
@@ -226,7 +239,6 @@
 			formdata.append('project_id', project_id);
 			formdata.append('mapped_columns', JSON.stringify(mappings));
 
-			console.log('Saving mappings:', mappings);
 			const response = await fetch(`${VITE_API_URL}/dataset/update_column_names`, {
 				method: 'POST',
 				body: formdata
@@ -237,8 +249,6 @@
 			}
 
 			const data = await response.json();
-
-			// partition_by_tags();
 			await start_datatype_conversion_temp();
 		} catch (error) {
 			console.error('Error:', error);
@@ -291,7 +301,7 @@
 		<h1 class="text-xl font-semibold">{currentFile}</h1>
 	</div>
 
-	<div class=" px-20">
+	<div class="px-20">
 		<BreadCrumb />
 		<div class="relative flex h-full flex-col gap-2 px-4">
 			<h2 class="font-semibold">Column Mapping</h2>
@@ -354,7 +364,6 @@
 												class="absolute top-12 z-20 max-h-60 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg"
 											>
 												{#each row.suggestions as suggestion, suggestionIndex}
-													<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 													<li
 														class="cursor-pointer px-4 py-2 hover:bg-gray-100 {row.highlightedIndex ===
 														suggestionIndex
@@ -370,9 +379,11 @@
 									</div>
 								</TableBodyCell>
 
-								<TableBodyCell class=" w-1/6">
+								<TableBodyCell class="w-1/6">
 									<div class="text-md flex items-center font-normal">
-										<h3 class="text-[#EF1F0F]">* 33% Reason Text</h3>
+										<h3 class="{row.confidence === '0%' ? 'text-[#EF1F0F]' : 'text-gray-600'}">
+											{row.confidence}
+										</h3>
 									</div>
 								</TableBodyCell>
 							</TableBodyRow>
