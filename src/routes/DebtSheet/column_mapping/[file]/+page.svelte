@@ -197,6 +197,7 @@
 
 	const start_datatype_conversion_temp = async () => {
 		try {
+			isLoading = true;
 			const response = await fetch(`${VITE_API_URL}/dataset/start_datatype_conversion_temp`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -209,9 +210,12 @@
 
 			const data = await response.json();
 			console.log(data);
+			isLoading = false;
 			goto(`/DebtSheet/data_validation/${project_id}`);
 		} catch (error) {
 			console.log('error: ', error);
+		} finally {
+			isLoading = false;
 		}
 	};
 
@@ -235,7 +239,7 @@
 			const data = await response.json();
 
 			// partition_by_tags();
-			start_datatype_conversion_temp();
+			await start_datatype_conversion_temp();
 		} catch (error) {
 			console.error('Error:', error);
 		} finally {
