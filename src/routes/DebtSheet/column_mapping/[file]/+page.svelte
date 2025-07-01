@@ -45,7 +45,7 @@
 			const [datasetResponse, systemResponse, mappingResponse] = await Promise.all([
 				fetch(`${VITE_API_URL}/dataset/get_column_names?project_id=${project_id}`),
 				fetch(`${VITE_API_URL}/admin/get_system_columns`),
-				fetch(`${VITE_API_URL}/project/get_projects/${project_id}`)
+				fetch(`${VITE_API_URL}/dataset/get_gpt_column_mapping/${project_id}`)
 			]);
 
 			if (!datasetResponse.ok || !systemResponse.ok || !mappingResponse.ok) {
