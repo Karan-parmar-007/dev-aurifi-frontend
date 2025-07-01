@@ -37,51 +37,31 @@
 	let currentFile = $state('');
 	let unmappedMandatoryCount = $state(0);
 
-	// Dummy API response
-	const apiResponse = {
-		response: [
-			{ confidence: "100%", matchedColumn: "unique_facility_identifier", systemColumn: "unique_facility_identifier" },
-			{ confidence: "100%", matchedColumn: "sanction_amount", systemColumn: "sanction_amount" },
-			{ confidence: "70%", matchedColumn: "Tags", systemColumn: "lender_name" },
-			{ confidence: "0%", matchedColumn: "unmapped", systemColumn: "optimization_type" },
-			{ confidence: "100%", matchedColumn: "serial_number", systemColumn: "serial_number" },
-			{ confidence: "100%", matchedColumn: "facility_type", systemColumn: "facility_type" },
-			{ confidence: "100%", matchedColumn: "sanction_date", systemColumn: "sanction_date" },
-			{ confidence: "100%", matchedColumn: "disbursement_amount", systemColumn: "disbursement_amount" },
-			{ confidence: "100%", matchedColumn: "disbursement_date", systemColumn: "disbursement_date" },
-			{ confidence: "100%", matchedColumn: "amount_outstanding", systemColumn: "amount_outstanding" },
-			{ confidence: "100%", matchedColumn: "evaluation_date", systemColumn: "evaluation_date" },
-			{ confidence: "100%", matchedColumn: "Security", systemColumn: "Security" },
-			{ confidence: "100%", matchedColumn: "book_debt_cover", systemColumn: "book_debt_cover" },
-			{ confidence: "100%", matchedColumn: "original_maturity_date", systemColumn: "original_maturity_date" },
-			{ confidence: "100%", matchedColumn: "revised_maturity_date", systemColumn: "revised_maturity_date" }
-		],
-		status: "success"
-	};
-
 	onMount(async () => {
 		try {
 			if (browser) {
 				currentFile = localStorage.getItem('currentFile') || 'No file selected';
 			}
-			const [datasetResponse, systemResponse] = await Promise.all([
+			const [datasetResponse, systemResponse, mappingResponse] = await Promise.all([
 				fetch(`${VITE_API_URL}/dataset/get_column_names?project_id=${project_id}`),
-				fetch(`${VITE_API_URL}/admin/get_system_columns`)
+				fetch(`${VITE_API_URL}/admin/get_system_columns`),
+				fetch(`${VITE_API_URL}/project/get_projects/${project_id}`)
 			]);
 
-			if (!datasetResponse.ok || !systemResponse.ok) {
-				throw new Error('Failed to fetch column data');
+			if (!datasetResponse.ok || !systemResponse.ok || !mappingResponse.ok) {
+				throw new Error('Failed to fetch column data or mapping data');
 			}
 
 			const datasetData = await datasetResponse.json();
 			const systemData = await systemResponse.json();
+			const mappingData = await mappingResponse.json();
 
 			datasetColumns = datasetData.column_names || [];
 			systemColumns = systemData.data || [];
 
 			rows = datasetColumns.map((column) => {
-				const match = apiResponse.response.find(r => r.matchedColumn === column);
-				const selected = match && match.confidence !== "0%" ? match.systemColumn : '';
+				const match = mappingData.response.find((r) => r.matchedColumn === column);
+				const selected = match && match.confidence !== '0%' ? match.systemColumn : '';
 				return {
 					uploaded: column,
 					inputValue: selected,
@@ -94,13 +74,13 @@
 			});
 
 			datasetColumns.forEach((col) => {
-				const match = apiResponse.response.find(r => r.matchedColumn === col);
-				mappings[col] = match && match.confidence !== "0%" ? match.systemColumn : '';
+				const match = mappingData.response.find((r) => r.matchedColumn === col);
+				mappings[col] = match && match.confidence !== '0%' ? match.systemColumn : '';
 			});
 
 			updateUnmappedMandatoryCount();
 		} catch (error) {
-			console.error('Error fetching column data:', error);
+			console.error('Error fetching data:', error);
 		} finally {
 			isLoading = false;
 		}
@@ -117,7 +97,9 @@
 	function filterSuggestions(index) {
 		const row = rows[index];
 		const otherSelected = rows.filter((r, i) => i !== index && r.selected).map((r) => r.selected);
-		let availableColumns: any[] = systemColumns.filter((col) => !otherSelected.includes(col.column_name));
+		let availableColumns: any[] = systemColumns.filter(
+			(col) => !otherSelected.includes(col.column_name)
+		);
 
 		if (!row.inputValue.trim()) {
 			row.suggestions = availableColumns.map((col) => ({ column_name: col.column_name }));
@@ -138,7 +120,7 @@
 		rows[index].selected = columnName;
 		rows[index].showSuggestions = false;
 		rows[index].highlightedIndex = -1;
-		rows[index].confidence = apiResponse.response.find(r => r.systemColumn === columnName)?.confidence || '0%';
+		rows[index].confidence = '0%'; // Default to 0% for user-selected values
 
 		const canonicalColumn = systemColumns.find(
 			(col) => col.column_name === columnName || col.alt_names.includes(columnName)
@@ -173,7 +155,7 @@
 				mappings[row.uploaded] = '';
 			} else {
 				row.selected = selectedColumn;
-				row.confidence = apiResponse.response.find(r => r.systemColumn === selectedColumn)?.confidence || '0%';
+				row.confidence = '0%'; // Default to 0% for user-modified values
 				mappings[row.uploaded] = selectedColumn;
 			}
 		}
@@ -203,7 +185,7 @@
 			const data = await response.json();
 			goto(`/DebtSheet/Tagging/${project_id}`);
 		} catch (error) {
-			console.log('error spliting data by tags: ', error);
+			console.log('error splitting data by tags: ', error);
 		} finally {
 			isLoading = false;
 		}
@@ -335,7 +317,7 @@
 							<TableBodyRow class="">
 								<TableBodyCell class="w-1/6 overflow-hidden text-ellipsis">
 									<div
-										class="text-md flex flex-1 items-center text-ellipsis font-normal text-gray-600"
+										class="text-md flex flex-1 items-center font-normal text-ellipsis text-gray-600"
 									>
 										{row.uploaded}
 									</div>
@@ -364,6 +346,7 @@
 												class="absolute top-12 z-20 max-h-60 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg"
 											>
 												{#each row.suggestions as suggestion, suggestionIndex}
+													<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 													<li
 														class="cursor-pointer px-4 py-2 hover:bg-gray-100 {row.highlightedIndex ===
 														suggestionIndex
@@ -381,7 +364,7 @@
 
 								<TableBodyCell class="w-1/6">
 									<div class="text-md flex items-center font-normal">
-										<h3 class="{row.confidence === '0%' ? 'text-[#EF1F0F]' : 'text-gray-600'}">
+										<h3 class={row.confidence === '0%' ? 'text-[#EF1F0F]' : 'text-gray-600'}>
 											{row.confidence}
 										</h3>
 									</div>
@@ -392,8 +375,8 @@
 				</Table>
 				<Button
 					color="dark"
-					class="bg-dark-100 ml-[92%] mt-16 h-[38px] w-[144px] text-nowrap"
-					onclick={saveColumnMappings}
+					class="bg-dark-100 mt-16 ml-[92%] h-[38px] w-[144px] text-nowrap"
+					on:click={saveColumnMappings}
 					disabled={unmappedMandatoryCount > 0}
 				>
 					Confirm Mapping
