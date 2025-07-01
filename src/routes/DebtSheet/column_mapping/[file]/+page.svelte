@@ -60,7 +60,8 @@
 			systemColumns = systemData.data || [];
 
 			rows = datasetColumns.map((column) => {
-				const match = mappingData.response.find((r) => r.matchedColumn === column);
+				const match =
+					mappingData.gpt_response?.response?.find((r) => r.matchedColumn === column) || null;
 				const selected = match && match.confidence !== '0%' ? match.systemColumn : '';
 				return {
 					uploaded: column,
@@ -74,7 +75,8 @@
 			});
 
 			datasetColumns.forEach((col) => {
-				const match = mappingData.response.find((r) => r.matchedColumn === col);
+				const match =
+					mappingData.gpt_response?.response?.find((r) => r.matchedColumn === col) || null;
 				mappings[col] = match && match.confidence !== '0%' ? match.systemColumn : '';
 			});
 
@@ -307,7 +309,7 @@
 				</div>
 			{:else}
 				<Table divClass="w-full">
-					<TableHead>
+					inflam <TableHead>
 						<TableHeadCell>Uploaded Column</TableHeadCell>
 						<TableHeadCell>Map To System Column</TableHeadCell>
 						<TableHeadCell>Match Probability</TableHeadCell>
@@ -365,7 +367,7 @@
 								<TableBodyCell class="w-1/6">
 									<div class="text-md flex items-center font-normal">
 										<h3 class={row.confidence === '0%' ? 'text-[#EF1F0F]' : 'text-gray-600'}>
-											{row.confidence}
+											{`${row.confidence} Reason Text`}
 										</h3>
 									</div>
 								</TableBodyCell>
@@ -376,7 +378,7 @@
 				<Button
 					color="dark"
 					class="bg-dark-100 mt-16 ml-[92%] h-[38px] w-[144px] text-nowrap"
-					on:click={saveColumnMappings}
+					onclick={saveColumnMappings}
 					disabled={unmappedMandatoryCount > 0}
 				>
 					Confirm Mapping
