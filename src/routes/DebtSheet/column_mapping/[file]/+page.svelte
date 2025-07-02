@@ -309,7 +309,7 @@
 				</div>
 			{:else}
 				<Table divClass="w-full">
-					inflam <TableHead>
+					<TableHead>
 						<TableHeadCell>Uploaded Column</TableHeadCell>
 						<TableHeadCell>Map To System Column</TableHeadCell>
 						<TableHeadCell>Match Probability</TableHeadCell>
@@ -367,7 +367,7 @@
 								<TableBodyCell class="w-1/6">
 									<div class="text-md flex items-center font-normal">
 										<h3 class={row.confidence === '0%' ? 'text-[#EF1F0F]' : 'text-gray-600'}>
-											{`${row.confidence} Reason Text`}
+											{`${row.confidence}`}
 										</h3>
 									</div>
 								</TableBodyCell>
