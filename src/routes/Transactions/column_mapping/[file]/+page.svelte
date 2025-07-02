@@ -283,7 +283,7 @@
 				fill="#242C3E"
 			/>
 		</svg>
-		<h1 class="text-xl font-semibold">Transaction 01</h1>
+		<h1 class="text-xl font-semibold">{currentFile}</h1>
 	</div>
 	<div class="h-full px-20">
 		<BreadCrumb />
@@ -372,7 +372,7 @@
 				<div class="flex w-full items-center justify-end py-10">
 					<Button
 						color="dark"
-						class="bg-dark-100 mt-6 h-[38px] w-[144px] max-w-40 cursor-pointer rounded-xl p-4 text-nowrap text-white"
+						class="bg-dark-100 mt-6 h-[38px] w-[144px] max-w-40 cursor-pointer text-nowrap rounded-xl p-4 text-white"
 						onclick={saveColumnMappings}
 						disabled={unmappedMandatoryCount > 0}
 					>
