@@ -290,11 +290,11 @@
 		<div class="flex h-full flex-col gap-2 px-4 py-6">
 			<h2 class="font-semibold">Column Mapping</h2>
 			<span class="flex items-center gap-6 pb-6 font-normal">
-				<p class="text-gray-500">
-					We've detected column mismatches. Please map your uploaded columns to the system's
-					expected fields.
-				</p>
 				{#if unmappedMandatoryCount > 0}
+					<p class="text-gray-500">
+						We've detected column mismatches. Please map your uploaded columns to the system's
+						expected fields.
+					</p>
 					<span class="rounded-xl bg-[#FFFAE9] px-3 py-2 text-[#755C0B]">
 						{unmappedMandatoryCount} Mandatory Header{unmappedMandatoryCount !== 1 ? 's' : ''} Not Found
 					</span>
