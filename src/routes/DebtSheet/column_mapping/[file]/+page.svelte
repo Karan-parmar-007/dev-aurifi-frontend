@@ -290,11 +290,11 @@
 		<div class="relative flex h-full flex-col gap-2 px-4">
 			<h2 class="font-semibold">Column Mapping</h2>
 			<span class="flex items-center gap-12 pb-6 font-normal">
-				<p class="text-gray-500">
-					We've detected column mismatches. Please map your uploaded columns to the system's
-					expected fields.
-				</p>
 				{#if unmappedMandatoryCount > 0}
+					<p class="text-gray-500">
+						We've detected column mismatches. Please map your uploaded columns to the system's
+						expected fields.
+					</p>
 					<span class="rounded-xl bg-[#FFFAE9] px-3 py-2 text-[#755C0B]">
 						{unmappedMandatoryCount} Mandatory Header{unmappedMandatoryCount !== 1 ? 's' : ''} Not Found
 					</span>
@@ -319,7 +319,7 @@
 							<TableBodyRow class="">
 								<TableBodyCell class="w-1/6 overflow-hidden text-ellipsis">
 									<div
-										class="text-md flex flex-1 items-center font-normal text-ellipsis text-gray-600"
+										class="text-md flex flex-1 items-center text-ellipsis font-normal text-gray-600"
 									>
 										{row.uploaded}
 									</div>
@@ -377,7 +377,7 @@
 				</Table>
 				<Button
 					color="dark"
-					class="bg-dark-100 mt-16 ml-[92%] h-[38px] w-[144px] text-nowrap"
+					class="bg-dark-100 ml-[92%] mt-16 h-[38px] w-[144px] text-nowrap"
 					onclick={saveColumnMappings}
 					disabled={unmappedMandatoryCount > 0}
 				>
