@@ -52,7 +52,7 @@
 <Drawer
 	transitionType="fly"
 	{transitionParams}
-	bind:hidden={breakDownBar.isBreakDownBarVisible}
+	bind:hidden={!breakDownBar.isBreakDownBarVisible}
 	id="sidebar3"
 	position="absolute"
 	class="right-0 start-[1p] w-96"
