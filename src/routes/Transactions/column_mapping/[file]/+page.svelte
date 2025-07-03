@@ -62,7 +62,8 @@
 			let gptMappings: Record<string, { systemColumn: string; confidence: string }> = {};
 			if (gptMappingResponse.ok) {
 				const gptData = await gptMappingResponse.json();
-				if (gptData.status === 'success' && gptData.gpt_response.status === 'success') {
+				console.log(gptData);
+				if (gptData.status === 'success') {
 					gptData?.gpt_response?.forEach((mapping: GptMapping) => {
 						gptMappings[mapping.matchedColumn] = {
 							systemColumn: mapping.systemColumn,
