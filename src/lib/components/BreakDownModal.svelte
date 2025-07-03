@@ -12,6 +12,7 @@
 	import { CalendarWeekSolid } from 'flowbite-svelte-icons';
 	import { sineIn } from 'svelte/easing';
 	import { breakDownBar, breakdownTransactionID } from '../../store/toogleModal.svelte';
+	import { VITE_API_URL } from '$lib/constants';
 
 	let transitionParams = {
 		x: 320,
@@ -32,7 +33,7 @@
 	async function fetchData(transaction_id: string) {
 		try {
 			const response = await fetch(
-				`${import.meta.env.VITE_API_URL}/transaction/get_all_data_for_one_transaction/${transaction_id}`,
+				`${VITE_API_URL}/transaction/get_all_data_for_one_transaction/${transaction_id}`,
 				{
 					method: 'GET',
 					headers: {
@@ -49,6 +50,7 @@
 			const result = await response.json();
 			// Assuming the API returns an array of steps or similar structure
 			data = result.breakdown || []; // Adjust based on your API response structure
+			console.log(data);
 		} catch (error) {
 			console.error('Error fetching transaction data:', error);
 			data = []; // Reset data on error
