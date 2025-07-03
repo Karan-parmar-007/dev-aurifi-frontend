@@ -1,7 +1,12 @@
 <script lang="ts">
 	import TransactionHeader from '$lib/components/TransactionHeader.svelte';
 	import { onMount } from 'svelte';
-	import { breakDownBar, modal, transactionModal } from '../../store/toogleModal.svelte';
+	import {
+		breakDownBar,
+		breakdownTransactionID,
+		modal,
+		transactionModal
+	} from '../../store/toogleModal.svelte';
 	import {
 		Table,
 		TableBody,
@@ -305,7 +310,10 @@
 								</TableBodyCell>
 								<TableBodyCell>
 									<button
-										onclick={() => (breakDownBar.isBreakDownBarVisible = false)}
+										onclick={() => {
+											breakdownTransactionID.transaction_id = item._id;
+											breakDownBar.isBreakDownBarVisible = false;
+										}}
 										class="text-primaryBlue-100 flex cursor-pointer justify-end font-medium"
 									>
 										See Breakdown
