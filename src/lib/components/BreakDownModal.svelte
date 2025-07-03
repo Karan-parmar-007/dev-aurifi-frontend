@@ -52,7 +52,7 @@
 <Drawer
 	transitionType="fly"
 	{transitionParams}
-	bind:hidden={!breakDownBar.isBreakDownBarVisible}
+	bind:hidden={breakDownBar.isBreakDownBarVisible}
 	id="sidebar3"
 	position="absolute"
 	class="right-0 start-[1p] w-96"
@@ -66,7 +66,7 @@
 			<div class=""></div>
 		</h5>
 		<CloseButton
-			onclick={() => (breakDownBar.isBreakDownBarVisible = true)}
+			onclick={() => (breakDownBar.isBreakDownBarVisible = false)}
 			class="mb-4 dark:text-white"
 		/>
 	</div>

@@ -32,4 +32,4 @@ export const ruleModal = new (class {
 })();
 
 export const SideBar = $state({ isSideBarVisible: true });
-export const breakDownBar = $state({ isBreakDownBarVisible: false });
+export const breakDownBar = $state({ isBreakDownBarVisible: true });

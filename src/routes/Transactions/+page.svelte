@@ -305,7 +305,7 @@
 								</TableBodyCell>
 								<TableBodyCell>
 									<button
-										onclick={() => (breakDownBar.isBreakDownBarVisible = true)}
+										onclick={() => (breakDownBar.isBreakDownBarVisible = false)}
 										class="text-primaryBlue-100 flex cursor-pointer justify-end font-medium"
 									>
 										See Breakdown
