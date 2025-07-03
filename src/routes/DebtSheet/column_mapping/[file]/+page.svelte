@@ -60,8 +60,7 @@
 			systemColumns = systemData.data || [];
 
 			rows = datasetColumns.map((column) => {
-				const match =
-					mappingData.gpt_response?.find((r) => r.matchedColumn === column) || null;
+				const match = mappingData.gpt_response?.find((r) => r.matchedColumn === column) || null;
 				const selected = match && match.confidence !== '0%' ? match.systemColumn : '';
 				return {
 					uploaded: column,
@@ -75,11 +74,10 @@
 			});
 
 			datasetColumns.forEach((col) => {
-				const match =
-					mappingData.gpt_response?.response?.find((r) => r.matchedColumn === col) || null;
+				const match = mappingData.gpt_response?.find((r) => r.matchedColumn === col) || null;
 				mappings[col] = match && match.confidence !== '0%' ? match.systemColumn : '';
 			});
-
+			
 			updateUnmappedMandatoryCount();
 		} catch (error) {
 			console.error('Error fetching data:', error);
