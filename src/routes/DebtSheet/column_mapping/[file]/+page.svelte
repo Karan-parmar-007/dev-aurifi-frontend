@@ -61,7 +61,7 @@
 
 			rows = datasetColumns.map((column) => {
 				const match =
-					mappingData.gpt_response?.response?.find((r) => r.matchedColumn === column) || null;
+					mappingData.gpt_response?.find((r) => r.matchedColumn === column) || null;
 				const selected = match && match.confidence !== '0%' ? match.systemColumn : '';
 				return {
 					uploaded: column,
