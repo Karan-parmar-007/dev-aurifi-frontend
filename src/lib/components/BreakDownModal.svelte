@@ -66,7 +66,7 @@
 			<div class=""></div>
 		</h5>
 		<CloseButton
-			onclick={() => (breakDownBar.isBreakDownBarVisible = false)}
+			onclick={() => (breakDownBar.isBreakDownBarVisible = true)}
 			class="mb-4 dark:text-white"
 		/>
 	</div>
